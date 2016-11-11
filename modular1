@@ -1,0 +1,3 @@
+(define (accum init)
+  (lambda (amount)
+	(begin (set! init (+ init amount)) init)))
