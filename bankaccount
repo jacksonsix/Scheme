@@ -2,7 +2,7 @@
         (define (withdraw amount)
                 (if (> init amount)
                         (begin (set! init (- init amount)) init)
-                        'no money))
+                        "no money"))
         (define (deposit some)
           (begin (set! init (+ init some)) init))
         (define (dispatch msg)
