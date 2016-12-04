@@ -1,0 +1,12 @@
+(define (account init)
+        (define (withdraw amount)
+                (if (> init amount)
+                        (begin (set! init (- init amount)) init)
+                        'no money))
+        (define (deposit some)
+          (begin (set! init (+ init some)) init))
+        (define (dispatch msg)
+                (cond (equal? msg 'withdraw) withdraw
+                         (equal? msg 'deposit ) deposit
+                        (else 'error)))
+         dispatch)
