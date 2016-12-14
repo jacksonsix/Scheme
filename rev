@@ -1,0 +1,5 @@
+(define (rev items)
+        (if (null? items)
+            (list)
+            (cons (rev (cdr items))
+                  (car items))))
