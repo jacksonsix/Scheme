@@ -101,4 +101,118 @@
 
 	
 			          	   
-		   
+;; merge streams
+
+(define twos
+        (scale-stream integers 2))
+(define fives
+     (scale-stream integers 5))
+(define threes
+      (scale-stream integers 3))
+
+(define (merge s1 s2)
+   (if (stream-null? s1)
+     s2
+	(cons-stream  (stream-car s1)
+	               (merge (stream-cdr s1) s2))))
+	  
+;; merge with order,weight function
+
+(define (merge s1 s2)
+  (cond ((stream-null? s1) s2)
+        ((stream-null? s2) s1)
+        (else
+         (let ((s1car (stream-car s1))
+               (s2car (stream-car s2)))
+           (cond ((< s1car s2car)
+                  (cons-stream s1car (merge (stream-cdr s1) s2)))
+                 ((> s1car s2car)
+                  (cons-stream s2car (merge s1 (stream-cdr s2))))
+                 (else
+                  (cons-stream s1car
+                               (merge (stream-cdr s1)
+                                      (stream-cdr s2)))))))))	
+
+;; interleave
+(define (interleave s1 s2)
+	(if (stream-null? s1)
+         s2
+		 (cons-stream (stream-car s1)
+                      (interleave s2 (stream-cdr s1)))))
+
+					  
+;;; test 
+(define s1 
+	(cons-stream 1 
+		(cons-stream 2 
+		(cons-stream 4 (cons-stream 6 (cons-stream 8 the-empty-stream))))))	
+
+(define s2 
+	(cons-stream 1 
+		(cons-stream 3 
+		(cons-stream 5 (cons-stream 7 (cons-stream 9 the-empty-stream))))))	
+
+;;; wrap procedure, high order
+(define (const2) 
+    2)
+(define (memo proc)	
+   (let ((number 0))
+	    (lambda (a b commnd)
+		   (if (equal? commnd 'count)
+		       number
+			   (begin (set! number (+ number 1))
+				       (proc a b))))))
+					   
+					   
+					   
+(define (memo-proc proc)
+  (let ((already-run? false) (result false))
+    (lambda ()
+      (if (not already-run?)
+          (begin (set! result (proc))
+                 (set! already-run? true)
+                 result)
+          result))))					   
+					   
+;;;
+(define m 
+     (merge s1 s2))
+
+(define hamming 
+    (cons-stream 1
+	             (merge (scale-stream hamming 2) 
+				     (merge (scale-stream hamming 3)  (scale-stream hamming 5) ))))	
+
+;; long dividen 
+(define (expand num den radix)
+  (cons-stream
+   (quotient (* num radix) den)
+   (expand (remainder (* num radix) den) den radix)))					 
+           	   
+			   
+;;; integral seriers   
+
+(define poweri
+	(cons-stream 1
+	             (stream-map (lambda (x) (/ 1 (+ x 1))) integers)))
+
+(define (integrate-powerseries stream)
+    (multi-stream poweri stream))
+	
+(define exp-series
+  (cons-stream 1
+               (integrate-powerseries exp-series)))	
+			   
+			   
+(define cosine-series
+  (cons-stream 1 
+               (stream-map - (integrate-powerseries sine-series))))
+(define sine-series
+  (cons-stream 0 
+               (integrate-powerseries cosine-series)))  
+			   
+;; multi-series
+;; get combination of  power n. then add all these pairs up
+;;
+(define (multi-series s1 s2)
+	(cons-stream)		   
