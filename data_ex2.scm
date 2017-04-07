@@ -96,7 +96,48 @@
 (define r (make-branch 2 5))
 
 
+
   
+(define (scaletree scale t)
+  (cond ((null? t) '())
+        ((not (pair? t)) (* t scale))
+        (else (cons (scaletree scale (car t))
+                    (scaletree scale (cdr t))))))  
+		
+
+
+(define (scale-tree scale tr)
+  (map (lambda (sub) 
+             (cond ((not (pair? sub)) (* scale sub))
+				   (else (scale-tree scale sub))))
+       tr))
+
+
+(define (tree-map func tr)
+  (map (lambda (sub) 
+              (if (pair? sub)
+                  (tree-map func sub)
+                  (func sub)))
+       tr))
+
+	   
+(define (subsets s)
+  (cond ((null? s) '())
+        ((null? (cdr s))  (list '() s))
+        (else (let ((rest (subsets (cdr s))))
+                (append rest (map (lambda (x) 
+		                            (cond ((null? x) (list (car s)))
+    							          ((pair? x) (cons (car s) x))
+						                  (else (cons  (car s) (list x))))) 
+							rest))))))
+		 
+
+
+		 
+	   
+
+  	   
+	     
    
 		
 			
