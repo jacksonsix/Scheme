@@ -96,7 +96,6 @@
 (define r (make-branch 2 5))
 
 
-
   
 (define (scaletree scale t)
   (cond ((null? t) '())
@@ -135,9 +134,146 @@
 
 		 
 	   
+;;;; setup a convention of calculation flow, signal flow
 
-  	   
-	     
-   
+(define (filter f sequence)
+  (cond ((null? sequence) '())
+        ((f  (car sequence)) (cons (car sequence) (filter f (cdr sequence))))
+		(else (filter f (cdr sequence)))))
 		
+		
+(define (accum  combin  init sequence)
+  (if   (null? sequence) 
+         init
+		 (combin (car sequence) (accum combin init (cdr sequence)))))
+		 
+		 
+
+
+(define (sum-odd-square sequence)
+  (accum +
+         0
+		 (map  square
+               (filter odd? sequence))))
+			   
+		            
+(define (maxs e sequence)
+  (if (null? sequence)
+       e
+      (maxs (max e (car sequence)) (cdr sequence))))
+	  
+	  
+;(define (map p sequence)
+;  (accum (lambda (x y) 
+;              (cons (p x)  y))
+;         '()
+;         sequence))
+		 
+  	   
+(define (append seq1 seq2)
+  (accum cons
+         seq2
+         seq1))		 
+		 
+		 
+(define (length sequence)	
+  (accum (lambda(x y) (+ 1 y))
+         0
+		 sequence))
+		 
+	   
+	   
+(define (horner x coeff)
+  (accum (lambda (thiscoff highercoff)
+                 (+ thiscoff (* x highercoff)))
+         0
+         coeff))	
+
+
+(define (count-leaf tree)
+  (accum (lambda (f rest) (+ 1 rest))
+         0         	      
+		 (fringe  tree)))
+						   
+
+			   
+(define (accum-n op init seqs)
+  (if (null? (car seqs))
+      '()
+	  (cons (accum op init (map car seqs))
+	        (accum-n op init (map cdr seqs)))))
 			
+			
+;;;;;;;;;;matrix reprented by sequences
+
+(define x (list 1 2 3))
+(define y (list 4 5 6))
+
+(define (para v w)
+  (if (null? v)
+      '()
+      (cons (* (car v) (car w))
+         (para (cdr v) (cdr w)))))     
+		
+
+(define (dot v w)
+  (accum +
+         0
+		 (para v w)))
+		 
+
+(define (m*vector m v)
+  (map (lambda (m1)
+          (dot m1 v))
+       m))
+
+
+(define (transpose mat)
+  (accum-n  cons
+            '()
+			 mat))
+
+			 
+(define (m*m m n)
+  (let ((cols (transpose n)))
+       (map (lambda (t)
+	          (m*vector cols t))
+			m)))
+
+			
+;;;;; fold-right , fold-left
+
+(define (fold-left op init sequence)
+  (define (iter result rest)
+    (if (null? rest)
+        result
+        (iter (op result (car rest))
+              (cdr rest))))
+  (iter init sequence))
+
+
+(accum / 
+      1
+      (list 1 2 3))
+
+
+(fold-left / 
+           1
+		   (list 1 2 3))	
+
+
+(define (reverse seq)	
+   (fold-left  (lambda(x y)
+                  (cons  y x))
+               '()
+			    seq))	
+
+(define (reverse seq)
+  (fold-right (lambda (x y)
+                 (append y (list x)))
+              '()
+              seq))
+			  
+	  
+		 
+			   
