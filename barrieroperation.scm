@@ -118,49 +118,44 @@
   
 (define (find ke frame)  
  (define (f k fram)
-  (cond ((null? (car fram)) '())
+  (cond ((null?  fram) '())
         ((equal? k (key (car fram))) (value (car fram)))
         (else (f k (cdr fram)))))
   (f  ke (cdr frame)))		
   
  
-
-(define (findcomplex ke frame)  
- (define (f k fram)
-  (cond ((null?  fram) '())
-        ((eq? k (key (car fram))) (value (car fram)))
-        (else (f k (cdr fram)))))
-  (f  ke (cdr frame)))
   
 
-(define (add-frame-to-table framename frame)
-  ;(set-cdr! proc-table (cons (make-key-value framename frame) (cdr proc-table)))) 
+(define (add-frame-to-table framename frame table)
+  ;(set-cdr! proc-table (cons (make-key-value framename frame) (cdr table)))) 
   (let ((kv (make-key-value framename frame)))
-      (add-to-frame kv proc-table)))
+      (add-to-frame kv table)))
            
 
-(define (findframe framename)
-  (find framename proc-table))
+(define (findframe framename table)
+  (find framename table))
   
 ;; set of frames ,  { key/frame }    
 
 (define (listframe)
   (define (lists tab)
-    (if (null? (cdr tab)) 
+    (if (null?  tab) 
         (display 'done)
-	    (begin (display (caar tab))
+	    (begin (display (key (car tab)))
              (newline)
              (lists (cdr tab)))))
   (lists (cdr proc-table)))	  
 
-(define proc-table (make-key-value 'table '()))
+(define proc-table (cons 'table '()))
+
+(define cross-table (cons 'cross '()))
 
 (define (put opkey typekey proc)
-  (let ((frame (findframe opkey)))
+  (let ((frame (findframe opkey proc-table)))
     (if (null? frame)
 	    (let ((nframe (make-frame opkey)))
 		  (add-to-frame (make-key-value typekey proc) nframe)
-		  (add-frame-to-table opkey nframe))
+		  (add-frame-to-table opkey nframe proc-table))
 		(add-to-frame (make-key-value typekey proc) frame))))  
   
 (define (get opkey typekey)
@@ -168,7 +163,7 @@
   (display opkey)
   (display typekey)
   (newline)
-  (let ((frame (findframe opkey)))
+  (let ((frame (findframe opkey proc-table)))
     (if (null? frame)
 	    '()
 		(find typekey frame))))
@@ -234,6 +229,8 @@
   (put 'mul '(number number) (lambda(x y) (tag (mul x y))))
   (put 'div '(number number) (lambda(x y) (tag (div x y))))
   (put 'make 'number (lambda(x) (tag x)))
+  (put 'equ? '(number number) (lambda (x y)(= x y)))
+  (put '=zero? '(number) (lambda(x) (= x 0)))
   'done)
   
 (define (make-number x)
@@ -271,6 +268,10 @@
 	(put 'mul '(rational rational) (lambda(x y) (tag (mul-rational x y))))
 	(put 'div '(rational rational) (lambda(x y) (tag (div-rational x y))))
 	
+	(put 'equ? '(rational rational) (lambda(x y) (= (/ (numer x) (denom x))
+	                                                (/ (numer y) (denom y)))))
+	(put '=zero? '(rational) (lambda(x)(= 0 (numer x))))
+	
 	(put 'make 'rational (lambda(n d) (tag (make-rational n d))))
 	'done)
 	
@@ -285,20 +286,20 @@
      ((get 'make-from-real-img 'rect) x y))
 	 
    (define (add-complex x y)
-     (make-from-real-img (+ (real-part x) (real-part y))
-                         (+ (img-part x) (img-part y))))
+     (make-from-real-img (add (real-part x) (real-part y))
+                         (add (img-part x) (img-part y))))
 
    (define (sub-complex x y)
-     (make-from-real-img (- (real-part x) (real-part y))
-                         (- (img-part x) (img-part y))))
+     (make-from-real-img (sub (real-part x) (real-part y))
+                         (sub (img-part x) (img-part y))))
 
    (define (mul-complex x y)
-     (make-from-real-img (* (mag x) (mag y))
-                         (+ (angle x) (angle y))))
+     (make-from-real-img (mul (mag x) (mag y))
+                         (add (angle x) (angle y))))
    
    (define (div-complex x y)
-     (make-from-real-img (/ (mag x) (mag y))
-                         (- (angle x) (angle y))))						 
+     (make-from-real-img (div (mag x) (mag y))
+                         (sub (angle x) (angle y))))						 
    					
    (put 'add '(complex complex) (lambda(x y) (tag (add-complex x y))))			   
    (put 'sub '(complex complex) (lambda(x y) (tag (sub-complex x y))))	
@@ -311,7 +312,11 @@
    (put 'img-part '(complex) img-part)
    (put 'mag '(complex) mag)
    (put 'angle '(complex) angle)
-   
+   (put 'equ? '(complex complex) (lambda(x y) (and (equ? (real-part x) (real-part y))    ;; what about a rational real part ??
+                                                   (equ? (img-part x) (img-part y)))))
+												   
+	(put '=zero? '(complex) (lambda(x) (and (=zero?  (real-part x))
+                                            (=zero?  (img-part x)))))	
    'done)
 
 (define (make-from-mag-ang x y)
@@ -348,5 +353,73 @@
   (applygenirc 'mul x y))  
 (define (div x y)
   (applygenirc 'div x y))  
-	
+  
+(define (equ? x y)
+  (applygenirc 'equ? x y))  
+  
+(define (=zero? x)
+  (applygenirc '=zero? x))
+
+
+(define (rise x)
+  (cond ((equal? (type x) 'number) (make-rational x 1))
+        ((equal? (type x) 'rational) (make-from-real-img x 0))
+        ((equal? (type x) 'complex) x)
+        (else error"unkown type")))
+
+(define (order x)	
+   (display x)
+   (cond ((equal? (type x) 'number) 1)
+         ((equal? (type x) 'rational) 2)
+         ((equal? (type x) 'complex) 3)
+         (else error"unkown order")))
+
+(define (number->rational x)  (raise x))
+(define (number->complex x) (raise (raise x)))  
+(define (rational->complex x) (raise x))
+
+(define (raise n x)
+  (if (= 0 n)
+      x
+	  (raise (- n 1) (rise x))))
+	  
+
+(define (maxlist list)
+  (define (f list n)
+   (if (null? list)
+       n
+       (if (> (car list) n)
+        (f (cdr list) (car list))
+        (f (cdr list) n))))
+  (f list 1))		
+	  
+(define (raiseargs args)
+  (define (high args)
+    (display args)
+    (let ((orders (map order args)))
+	   (maxlist orders )))
+  (define (r args n)
+    (display args)
+    (if (null? args)
+      '()
+      (cons (raise (- n (order (car args))) (car args))
+            (r (cdr args) n))))
+  (r args (high args)))
+  
+		 
+(define (applygenirc op . args) 
+ (let ((type-tags (map type args)))
+   (let ((proc (get op type-tags)))
+     (if (not (null? proc)) 
+	     (apply proc (map data args))
+		 (let ((aproc  (get op (map type (raiseargs args)))))
+		    (if (not (null? aproc))
+			    (begin (display 'aproc) (display aproc) (apply aproc (map data (raiseargs args))))
+				(error "can not find procedures")))))))    ;
+
+
+; the problem is how to handle the  args and (list args).
+; apply can handle this. how ?
+
+ 	
 	
