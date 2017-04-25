@@ -148,7 +148,6 @@
 
 (define proc-table (cons 'table '()))
 
-(define cross-table (cons 'cross '()))
 
 (define (put opkey typekey proc)
   (let ((frame (findframe opkey proc-table)))
@@ -178,7 +177,7 @@
   (define (real-part z) (car z))
   (define (img-part z) (cdr z))
   (define (make-from-real-img r img) (cons r img))
-  (define (mag z) (sqrt (+ (square (real-part z))
+  (define (mag z) (sqrt (add (square (real-part z))
                      (square (img-part z)))))
   (define (angle z) (atan (img-part z) (real-part z)))
   (define (make-from-mag-ang r a) (cons (* r (cos a)) (* r (sin a))))
@@ -198,7 +197,7 @@
 (define (install-polar-package)
   (define (real-part z) (* (mag z) (cos (angle z))))
   (define (img-part z) (* (mag z) (sin (angle z))))
-  (define (make-from-real-img r img) (cons (sqrt (+ (square r) (square img)))  
+  (define (make-from-real-img r img) (cons (sqrt (add (square r) (square img)))  
                                            (atan img r)))
   (define (mag z) (car z))
   (define (angle z) (cdr z))
@@ -273,11 +272,19 @@
 	(put '=zero? '(rational) (lambda(x)(= 0 (numer x))))
 	
 	(put 'make 'rational (lambda(n d) (tag (make-rational n d))))
+	(put 'rnumer '(rational) (lambda(x) (numer  x)))
+	(put 'rdenom '(rational) (lambda(x) (denom  x)))
 	'done)
 	
 (define (make-rational n d)
   ((get 'make 'rational) n d))
 
+(define (rnumer x)
+  ((get 'rnumer '(rational)) x))  
+  
+(define (rdenom x)
+  ((get 'rdenom '(rational)) x))  
+  
 (define (install-complex-package)
    (define (tag x) (add-type 'complex x))
    (define (make-from-mag-ang x y)
@@ -360,7 +367,32 @@
 (define (=zero? x)
   (applygenirc '=zero? x))
 
+  
+(define (drop x)  
+  (if (= (order x) 1)
+    x
+    (let ((w (lower x)))
+     (if (= (order x) (order w))
+	    w
+		(lower w)))))
+        
+  
+(define (lower x)
+  (let ((t (project x)))
+    (if (equ? x (rise t))
+	    t
+		x)))  
 
+	
+
+  
+(define (project x)
+   (if (= (order x) 1)
+    x
+   (applygenirc 'project x)))  
+	
+	
+;; this can also install to table instead of case 	
 (define (rise x)
   (cond ((equal? (type x) 'number) (make-rational x 1))
         ((equal? (type x) 'rational) (make-from-real-img x 0))
@@ -406,20 +438,38 @@
             (r (cdr args) n))))
   (r args (high args)))
   
-		 
+
+
+
+; result of applygenirc may be not number, such as true/false, can not drop  
 (define (applygenirc op . args) 
- (let ((type-tags (map type args)))
+ (define (try op . ags)
+  (let ((type-tags (map type args)))
    (let ((proc (get op type-tags)))
      (if (not (null? proc)) 
-	     (apply proc (map data args))
+	       (apply proc (map data args))
 		 (let ((aproc  (get op (map type (raiseargs args)))))
 		    (if (not (null? aproc))
-			    (begin (display 'aproc) (display aproc) (apply aproc (map data (raiseargs args))))
-				(error "can not find procedures")))))))    ;
+			     (apply aproc (map data (raiseargs args)))
+				(error "can not find procedures")))))))
+ (let ((result (try op args)))
+    (if (pair? result)
+        (if (or (equal? (type result) 'number)	
+		        (equal? (type result) 'rational)
+                (equal? (type result) 'complex))
+            (drop result)
+            result)
+        result)))			
 
 
 ; the problem is how to handle the  args and (list args).
 ; apply can handle this. how ?
 
  	
-	
+(define (install-reduce-package)  
+  (put 'project '(number) (lambda(x) x))
+  (put 'project '(rational) (lambda(x) (rnumer x)))
+  (put 'project '(complex) (lambda(x) (real-part x)))
+  'done)
+  
+(install-reduce-package)  	
