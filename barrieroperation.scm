@@ -272,18 +272,18 @@
 	(put '=zero? '(rational) (lambda(x)(= 0 (numer x))))
 	
 	(put 'make 'rational (lambda(n d) (tag (make-rational n d))))
-	(put 'rnumer '(rational) (lambda(x) (numer  x)))
-	(put 'rdenom '(rational) (lambda(x) (denom  x)))
+	;(put 'rnumer '(rational) (lambda(x) (numer  x)))
+	;(put 'rdenom '(rational) (lambda(x) (denom  x)))
 	'done)
 	
 (define (make-rational n d)
   ((get 'make 'rational) n d))
 
-(define (rnumer x)
-  ((get 'rnumer '(rational)) x))  
+;(define (rnumer x)
+;  ((get 'rnumer '(rational)) x))  
   
-(define (rdenom x)
-  ((get 'rdenom '(rational)) x))  
+;(define (rdenom x)
+;  ((get 'rdenom '(rational)) x))  
   
 (define (install-complex-package)
    (define (tag x) (add-type 'complex x))
@@ -315,10 +315,10 @@
    (put 'make-from-real-img 'complex (lambda (x y) (tag (make-from-real-img x y))))
    (put 'make-from-mag-ang  'complex (lambda (x y) (tag (make-from-mag-ang x y))))
    
-   (put 'real-part '(complex) real-part)
-   (put 'img-part '(complex) img-part)
-   (put 'mag '(complex) mag)
-   (put 'angle '(complex) angle)
+   ;(put 'real-part '(complex) real-part)
+   ;(put 'img-part '(complex) img-part)
+   ;(put 'mag '(complex) mag)
+   ;(put 'angle '(complex) angle)
    (put 'equ? '(complex complex) (lambda(x y) (and (equ? (real-part x) (real-part y))    ;; what about a rational real part ??
                                                    (equ? (img-part x) (img-part y)))))
 												   
@@ -332,17 +332,17 @@
 (define (make-from-real-img x y)
   ((get 'make-from-real-img 'complex) x y))  
 
-(define (img-part z)
-  (applygenirc 'img-part z))  
+;(define (img-part z)
+;  (applygenirc 'img-part z))  
 
-(define (real-part z)
-  (applygenirc 'real-part z)) 
+;(define (real-part z)
+;  (applygenirc 'real-part z)) 
   
-(define (mag z)
-  (applygenirc 'mag z))
+;(define (mag z)
+;  (applygenirc 'mag z))
   
-(define (angle z)
-  (applygenirc 'angle z))  
+;(define (angle z)
+;  (applygenirc 'angle z))  
   
 (install-polar-package)
 (install-rect-package)   
@@ -400,7 +400,9 @@
         (else error"unkown type")))
 
 (define (order x)	
+   (display 'order) 
    (display x)
+     (newline)
    (cond ((equal? (type x) 'number) 1)
          ((equal? (type x) 'rational) 2)
          ((equal? (type x) 'complex) 3)
@@ -447,7 +449,7 @@
   (let ((type-tags (map type args)))
    (let ((proc (get op type-tags)))
      (if (not (null? proc)) 
-	       (apply proc (map data args))
+	     (apply proc (map data args))
 		 (let ((aproc  (get op (map type (raiseargs args)))))
 		    (if (not (null? aproc))
 			     (apply aproc (map data (raiseargs args)))
@@ -472,4 +474,237 @@
   (put 'project '(complex) (lambda(x) (real-part x)))
   'done)
   
-(install-reduce-package)  	
+(install-reduce-package)  
+
+
+;; high dense package
+;; dense terms (high low 0)
+
+(define (install-dense-package)
+  (define (tagx x) (add-type 'dense x))
+  (define (make-terms l) l)
+  
+  (define empty-term-token '())
+  (define (empty-terms? terms) (null? terms))
+  (define (first-term terms) (car terms))
+  (define (rest-terms terms) (cdr terms))  
+  
+  (define (add-terms terms1 terms2)
+    (define (addt t1 t2)
+      (cond ((empty-terms? t1) t2)
+	        ((empty-terms? t2) t1)
+		    (else 				
+			  (cons (add (first-term t1)
+                         (first-term t2))
+                    (addt (cdr t1) (cdr t2))))))					
+
+    (let ((r1 (reverse terms1))
+		  (r2 (reverse terms2)))
+        (reverse (addt r1 r2))))	
+		
+        	     
+  
+  (put 'add '(dense dense) (lambda(t1 t2)	(tagx (add-terms t1 t2))))
+  (put 'make 'dense (lambda(x) (tagx (make-terms x))))
+  
+  
+  
+'done)
+
+(install-dense-package)
+
+
+
+;; low dense package
+(define (install-low-dense-package)
+ ;;  terms operations
+  (define (tagx data) (add-type 'sparse data))
+  
+  (define (add-terms terms1 terms2)    
+    (cond ((empty-terms? terms1) terms2)
+	      ((empty-terms? terms2) terms1)
+		  (else  
+    		  (add-terms (rest-terms terms1) (add-term  (first-term terms1) terms2)))))
+					  
+  (define (add-term x terms)   
+    (cond ((empty-terms? terms) x)    	  
+		  ((= (termorder x) (termorder (first-term terms))) (adjoin-term (make-term (termorder x) (add (coff x) (coff (first-term terms))))
+		                                                                 (rest-terms terms)))		 
+          (else (adjoin-term (first-term terms) (add-term x (rest-terms terms))))))
+		  
+  (define (sub-terms terms1 terms2)   
+    (cond ((empty-terms? terms1) terms2)
+	      ((empty-terms? terms2) terms1)
+		  (else  
+    		  (sub-terms (rest-terms terms1) (sub-term  (first-term terms1) terms2)))))
+					  
+  (define (sub-term x terms)   
+    (cond ((empty-terms? terms) x)    	  
+		  ((= (termorder x) (termorder (first-term terms))) (adjoin-term (make-term (termorder x) (sub (coff x) (coff (first-term terms))))
+		                                                                 (rest-terms terms)))		 
+          (else (adjoin-term (first-term terms) (sub-term x (rest-terms terms))))))		  
+		  
+   		  
+  (define (mul-terms terms1 terms2)
+    (cond ((empty-terms? terms1) empty-term-token)
+	      ;((null? terms2) empty-term-token)
+		  (else  
+		       (add-terms (mul-terms (rest-terms terms1) terms2)
+			              (mul-term  (first-term terms1) terms2)))))
+					  
+  (define (mul-term x terms) 
+    (if (null? terms) 
+	    '() 
+        (adjoin-term  (make-term (+ (termorder x) (termorder (first-term terms)))
+                                		(mul (coff x) (coff (first-term terms))))
+    						(mul-term x (rest-terms terms)))))
+		  
+  ;; terms object {term}
+  (define empty-term-token '())
+  (define (empty-terms? terms) (null? terms))
+  (define (make-terms terms)  terms)
+  (define (first-term terms) (car terms))
+  (define (rest-terms terms) (cdr terms))
+  (define (last-term terms) 
+     (if (null? terms)
+	     '()
+		 (if (null? (cdr terms))
+		     (begin (newline) (display 'last) (display (car terms)) (car terms))
+			 (last-term (cdr terms)))))
+			 
+  (define (adjoin-term x terms) 
+    (if (=zero? (coff x))
+	    terms 
+	    (cons x terms)))
+		
+  (define (hlow terms)
+    (let ((high (termorder (first-term terms))))
+	  (let ((low (termorder (last-term terms))))
+	     (+ 1(- high low)))))
+		
+  (define (len terms)
+    (if (null? terms)
+        0
+        (+ 1 (len (cdr terms))))) 		
+  
+  ;; term object
+  (define (make-term order cof) (cons order cof))
+  (define (termorder t) (car t))
+  (define (coff t) (cdr t))
+  
+  (define (all-zero? l)
+     (if (null? l)
+	     true
+		 (if (=zero? (car l))
+		     (all-zero? (cdr l))
+			 false)))
+			 
+
+  (put 'make 'sparse (lambda(x) (tagx (make-terms x))))
+  (put 'add '(sparse sparse) (lambda(t1s t2s) (tagx (add-terms t1s t2s))))	
+  (put 'sub '(sparse sparse) (lambda(t1s t2s) (tagx (sub-terms t1s t2s))))	
+  (put 'mul '(sparse sparse) (lambda(t1s t2s) (tagx (mul-terms t1s t2s))))	
+  ;(put 'div'(sparse sparse) (div-term x terms))	
+  (put 'make 'term make-term)	
+	 
+'done)
+
+ (install-low-dense-package)
+
+ 
+(define (add-terms terms1 terms2)
+   (applygenirc 'add terms1 terms2))
+   
+(define (sub-terms terms1 terms2)
+   (applygenirc 'sub terms1 terms2))
+   
+(define (mul-terms terms1 terms2)
+   (applygenirc 'mul terms1 terms2))
+
+   
+ 
+;; poly package
+
+(define (install-poly-package)
+  (define (tagx x) (add-type 'poly x))
+  
+  (define (dense? terms) 
+     (let (( lens (len terms)))
+	    (let ((hl (hlow terms)))		 
+		  (if (> (/ lens hl) (/ 1 2))
+		      true
+			  false))))
+		  
+  (define (make-poly var terms)        
+    	(cons var terms))		 
+		   
+  (define (var po) (car po))
+  (define (terms po) (cdr po))
+  
+  (define (add-poly x y)
+    (if (equal? (var x) (var y))
+	    (make-poly (var x)
+		           (add-terms (terms x) (terms y))) 
+		(error "can not add poly")))
+		
+  (define (sub-poly x y)
+    (if (equal? (var x) (var y))
+	    (make-poly (var x)
+		           (sub-terms (terms x) (terms y))) 
+		(error "can not sub poly")))		
+		
+  (define (mul-poly x y)
+    (if (equal? (var x) (var y))
+	    (make-poly (var x)
+		           (mul-terms (terms x) (terms y))) 
+		(error "can not mul ploy")))		
+		
+ 	
+  (put 'make 'poly (lambda(v t) (tagx (make-poly v t))))
+  (put 'variable '(poly) var )
+  (put 'terms '(poly) terms )
+  
+  (put 'add '(poly poly) (lambda (x y) (tagx (add-poly x y))))
+  (put 'sub '(poly poly) (lambda (x y) (tagx (sub-poly x y))))
+  (put 'mul '(poly poly) (lambda (x y) (tagx (mul-poly x y))))
+  (put '=zero? '(poly) (lambda(x) (all-zero? (map coff (terms x)))))
+  ;(put 'neg '(poly) (lambda(x) 
+  
+  'done)  
+  
+(define (make-poly variable terms)
+  ((get 'make 'poly) variable terms))
+  
+
+(define (make-terms-sparse term)
+  ((get 'make 'sparse) term))
+
+
+(define (make-terms-dense term)
+  ((get 'make 'dense) term))  
+  
+(define (variable p) 
+  (applygenirc 'variable p))
+  
+(define (terms p) 
+  (applygenirc 'terms  p))  
+
+  
+(define (make-term o c)
+  ((get 'make 'term) o c))
+   
+   
+(define (=zero? py)
+  (applygenirc '=zero? py))  
+  
+(install-poly-package)
+
+
+(define p1 (make-poly 'x (make-terms-sparse (list (make-term 2 3) (make-term 1 3)))))
+(define p2 (make-poly 'x (make-terms-sparse (list (make-term 1 3)))))
+(define p3 (make-poly 'x (make-terms-sparse (list (make-term 2 3) (make-term 1 5)))))
+(define p4 (make-poly 'x (make-terms-sparse (list (make-term 1 3) (make-term 0 1)))))
+(define p5 (make-poly 'x (make-terms-sparse (list (make-term 0 2)))))
+(define p6 (make-poly 'x (make-terms-dense (list 3 3 0))))
+(define p7 (make-poly 'x (make-terms-dense (list  3 0))))
+
