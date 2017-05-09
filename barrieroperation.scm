@@ -602,7 +602,11 @@
 (define (neg-terms terms )
    (applygenirc 'neg terms)) 
  
-;; poly package
+;; poly package -------------------------
+;; make an ordering of variables, so it works for multiple variables
+;; This is to make multidimension of operation on variable, one variable one dimension
+;;
+
 
 (define (install-poly-package)
   (define (tagx x) (add-type 'poly x))
