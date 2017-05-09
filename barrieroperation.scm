@@ -9,60 +9,7 @@
 ;; complex number
 ;; generic operations
 
-(define (add-complex c1 c2)
-  (make-from-real-img (+ (real c1) (real c2))
-                     (+ (img c1) (img c2))))					 
-
-
-(define (multi-complex c1 c2)
-  (make-from-mag-ang  (* (mag c1) (mag c2))
-                    (+ (ang c1) (ang c2))))
-
-(define (sub-complex c1 c2)
-  (make-from-real-img (- (real c1) (real c2))
-                     (- (img c1) (img c2))))
-
-(define (div-complex c1 c2)
-  (make-from-mag-ang  (/ (mag c1) (mag c2))
-                    (- (ang c1) (ang c2))))
-
-
-;; representation of complex
-;; generic selector
-(define (real complex)
-  (applygenirc 'real-part complex))
-		
-  
-(define (img complex)
-  (applygenirc 'img-part complex))
-  
-
-(define (mag complex)
-  (applygenirc 'mag complex))
-
-(define (ang complex)
-   (applygenirc 'angle complex))
-
-
-(define (make-from-real-img x y)
-  ((get 'make-from-real-img 'rect) x y))
-  
-(define (make-from-mag-ang r a)
-  ((get 'make-from-mag-ang 'polar) r a))  
-
-  
-(define (applygenirc op . args)
- (display 'applygenirc)
- (display op)
- (display (map type args))
- (newline)
- (let ((type-tags (map type args)))
-   (let ((proc (get op type-tags)))
-     (if proc 
-	     (apply proc (map data args))
-		 (error "not methods")))))
-
-
+;; revision add neg operation
 
 ;;; add type tag to data 
 (define (add-type tag data)
@@ -85,13 +32,6 @@
 	  (if (number? tagged)
 	      'number
 		  (error "not supported")))) 
-
-(define (rect? z)
-   (eq? (type z) 'rect))
-   
-(define (polar? z)
-   (eq? (type z) 'polar))
-
 
 ;; table of procedures
 ;; need key/value pair as basic structures
@@ -158,10 +98,10 @@
 		(add-to-frame (make-key-value typekey proc) frame))))  
   
 (define (get opkey typekey)
-  (display '(get once))
-  (display opkey)
-  (display typekey)
-  (newline)
+  ;(display '(get once))
+  ;(display opkey)
+  ;(display typekey)
+  ;(newline)
   (let ((frame (findframe opkey proc-table)))
     (if (null? frame)
 	    '()
@@ -170,8 +110,85 @@
 ;; end of table operations		
  
     
-;; data-dircted programming
+;; data-dircted programming--------------------------------------------------------------------------------
 ;; install package
+
+
+(define (install-number-package)
+  (define (tag x) (add-type 'number x))
+  (define (add x y) (+ x y))
+  (define (sub x y) (- x y))
+  (define (mul x y) (* x y))
+  (define (div x y) (/ x y))
+  
+  (put 'add '(number number) (lambda(x y) (tag (add x y))))
+  (put 'sub '(number number) (lambda(x y) (tag (sub x y))))
+  (put 'mul '(number number) (lambda(x y) (tag (mul x y))))
+  (put 'div '(number number) (lambda(x y) (tag (div x y))))
+  (put 'make 'number (lambda(x) (tag x)))
+  (put 'equ? '(number number) (lambda (x y)(= x y)))
+  (put '=zero? '(number) (lambda(x) (= x 0)))
+  (put 'neg '(number) (lambda(x) (- x)))
+  'done)
+  
+  
+  
+(define (install-rational-package) 
+   (define (tag x) (add-type 'rational x))
+   (define (numer x) (car x))
+   (define (denom x) (cdr x))
+   
+   (define (make-rational n d) 
+     (if (and (integer? n)
+	          (integer? d)) 
+        (let ((g (gcd n d)))
+	      (cons (/ n g) (/ d g)))
+		(cons n d)))  
+	   
+   (define (add-rational x y)
+    (make-rational (+ (* (numer x) (denom y))
+                        (* (numer y) (denom x)))
+                   (* (denom x) (denom y))))
+				   
+   (define (sub-rational x y)
+    (make-rational (- (* (numer x) (denom y))
+                        (* (numer y) (denom x)))
+                   (* (denom x) (denom y))))
+
+   (define (mul-rational x y)
+     (make-rational (* (numer x)  (numer y))
+                    (* (denom x)  (denom y))))
+					
+   (define (div-rational x y)
+     (make-rational (* (numer x)  (denom y))
+                    (* (denom x)  (numer y))))
+
+	(put 'add '(rational rational) (lambda(x y) (tag (add-rational x y))))
+	(put 'sub '(rational rational) (lambda(x y) (tag (sub-rational x y))))
+	(put 'mul '(rational rational) (lambda(x y) (tag (mul-rational x y))))
+	(put 'div '(rational rational) (lambda(x y) (tag (div-rational x y))))
+	
+	(put 'equ? '(rational rational) (lambda(x y) (equ? (/ (numer x) (denom x))
+	                                                (/ (numer y) (denom y)))))
+	(put '=zero? '(rational) (lambda(x)(=zero?  (numer x))))
+	
+	(put 'make 'rational (lambda(n d) (tag (make-rational n d))))
+	(put 'rnumer '(rational) (lambda(x) (numer  x)))
+	(put 'rdenom '(rational) (lambda(x) (denom  x)))
+	(put 'neg '(rational) (lambda(x) (make-rational (neg (rnumer x))
+	                                                (rdenom x))))
+	'done)
+	
+(define (make-rational n d)
+  ((get 'make 'rational) n d))
+
+(define (rnumer x)
+  ((get 'rnumer '(rational)) x))  
+  
+(define (rdenom x)
+  ((get 'rdenom '(rational)) x))  
+ 
+;;;;;complex package --------------
 
 (define (install-rect-package)
   (define (real-part z) (car z))
@@ -215,76 +232,7 @@
   
   
  
-  
-(define (install-number-package)
-  (define (tag x) (add-type 'number x))
-  (define (add x y) (+ x y))
-  (define (sub x y) (- x y))
-  (define (mul x y) (* x y))
-  (define (div x y) (/ x y))
-  
-  (put 'add '(number number) (lambda(x y) (tag (add x y))))
-  (put 'sub '(number number) (lambda(x y) (tag (sub x y))))
-  (put 'mul '(number number) (lambda(x y) (tag (mul x y))))
-  (put 'div '(number number) (lambda(x y) (tag (div x y))))
-  (put 'make 'number (lambda(x) (tag x)))
-  (put 'equ? '(number number) (lambda (x y)(= x y)))
-  (put '=zero? '(number) (lambda(x) (= x 0)))
-  'done)
-  
-(define (make-number x)
-  ((get 'make 'number) x))  
-  
-  
-(define (install-rational-package) 
-   (define (tag x) (add-type 'rational x))
-   (define (numer x) (car x))
-   (define (denom x) (cdr x))
-   (define (make-rational n d) 
-     (let ((g (gcd n d)))
-	   (cons (/ n g) (/ d g))))
-	   
-   (define (add-rational x y)
-    (make-rational (+ (* (numer x) (denom y))
-                        (* (numer y) (denom x)))
-                   (* (denom x) (denom y))))
-				   
-   (define (sub-rational x y)
-    (make-rational (- (* (numer x) (denom y))
-                        (* (numer y) (denom x)))
-                   (* (denom x) (denom y))))
-
-   (define (mul-rational x y)
-     (make-rational (* (numer x)  (numer y))
-                    (* (denom x)  (denom y))))
-					
-   (define (div-rational x y)
-     (make-rational (* (numer x)  (denom y))
-                    (* (denom x)  (numer y))))
-
-	(put 'add '(rational rational) (lambda(x y) (tag (add-rational x y))))
-	(put 'sub '(rational rational) (lambda(x y) (tag (sub-rational x y))))
-	(put 'mul '(rational rational) (lambda(x y) (tag (mul-rational x y))))
-	(put 'div '(rational rational) (lambda(x y) (tag (div-rational x y))))
-	
-	(put 'equ? '(rational rational) (lambda(x y) (= (/ (numer x) (denom x))
-	                                                (/ (numer y) (denom y)))))
-	(put '=zero? '(rational) (lambda(x)(= 0 (numer x))))
-	
-	(put 'make 'rational (lambda(n d) (tag (make-rational n d))))
-	;(put 'rnumer '(rational) (lambda(x) (numer  x)))
-	;(put 'rdenom '(rational) (lambda(x) (denom  x)))
-	'done)
-	
-(define (make-rational n d)
-  ((get 'make 'rational) n d))
-
-;(define (rnumer x)
-;  ((get 'rnumer '(rational)) x))  
-  
-;(define (rdenom x)
-;  ((get 'rdenom '(rational)) x))  
-  
+ 
 (define (install-complex-package)
    (define (tag x) (add-type 'complex x))
    (define (make-from-mag-ang x y)
@@ -296,17 +244,23 @@
      (make-from-real-img (add (real-part x) (real-part y))
                          (add (img-part x) (img-part y))))
 
+   ;(define (sub-complex x y)
+   ; (make-from-real-img (sub (real-part x) (real-part y))
+   ;                      (sub (img-part x) (img-part y))))
    (define (sub-complex x y)
-     (make-from-real-img (sub (real-part x) (real-part y))
-                         (sub (img-part x) (img-part y))))
-
+     (make-from-real-img (add (real-part x) (neg (real-part y)))
+	                     (add (img-part x)  (neg (img-part y)))))
+   
    (define (mul-complex x y)
      (make-from-real-img (mul (mag x) (mag y))
                          (add (angle x) (angle y))))
    
    (define (div-complex x y)
      (make-from-real-img (div (mag x) (mag y))
-                         (sub (angle x) (angle y))))						 
+                         (sub (angle x) (angle y))))
+   (define (neg-complex x)
+      (make-from-real-img (neg (real-part x))
+                          (img-part x)))	  
    					
    (put 'add '(complex complex) (lambda(x y) (tag (add-complex x y))))			   
    (put 'sub '(complex complex) (lambda(x y) (tag (sub-complex x y))))	
@@ -315,15 +269,13 @@
    (put 'make-from-real-img 'complex (lambda (x y) (tag (make-from-real-img x y))))
    (put 'make-from-mag-ang  'complex (lambda (x y) (tag (make-from-mag-ang x y))))
    
-   ;(put 'real-part '(complex) real-part)
-   ;(put 'img-part '(complex) img-part)
-   ;(put 'mag '(complex) mag)
-   ;(put 'angle '(complex) angle)
    (put 'equ? '(complex complex) (lambda(x y) (and (equ? (real-part x) (real-part y))    ;; what about a rational real part ??
                                                    (equ? (img-part x) (img-part y)))))
 												   
-	(put '=zero? '(complex) (lambda(x) (and (=zero?  (real-part x))
-                                            (=zero?  (img-part x)))))	
+   (put '=zero? '(complex) (lambda(x) (and (=zero?  (real-part x))
+                                            (=zero?  (img-part x)))))
+											
+   (put 'neg '(complex) (lambda(x) (tag (neg-complex x))))											
    'done)
 
 (define (make-from-mag-ang x y)
@@ -332,17 +284,17 @@
 (define (make-from-real-img x y)
   ((get 'make-from-real-img 'complex) x y))  
 
-;(define (img-part z)
-;  (applygenirc 'img-part z))  
+(define (img-part z)
+  (applygenirc 'img-part z))  
 
-;(define (real-part z)
-;  (applygenirc 'real-part z)) 
+(define (real-part z)
+  (applygenirc 'real-part z)) 
   
-;(define (mag z)
-;  (applygenirc 'mag z))
+(define (mag z)
+  (applygenirc 'mag z))
   
-;(define (angle z)
-;  (applygenirc 'angle z))  
+(define (angle z)
+  (applygenirc 'angle z))  
   
 (install-polar-package)
 (install-rect-package)   
@@ -367,7 +319,44 @@
 (define (=zero? x)
   (applygenirc '=zero? x))
 
+(define (neg x)
+   (applygenirc 'neg x))
+   
+;; reduce-package --------------------------------------------------
+
+;; use tower representation of number,rational,complex,poly
+
+
+(define (order x)	
+   (cond ((equal? (type x) 'number) 1)
+         ((equal? (type x) 'rational) 2)
+         ((equal? (type x) 'complex) 3)
+		 ((equal? (type x) 'poly) 4)
+         (else error"unkown order")))
+
+
+
+(define (install-reduce-package)  
+  (put 'project '(number) (lambda(x) x))
+  (put 'project '(rational) (lambda(x) (rnumer x)))
+  (put 'project '(complex) (lambda(x) (real-part x)))
+  'done)
   
+(install-reduce-package)  
+
+
+
+(define (project x)
+   (if (= (order x) 1)
+    x
+   (applygenirc 'project x)))  
+   
+(define (lower x)
+  (let ((t (project x)))
+    (if (equ? x (rise t))
+	    t
+		x)))    
+ 
 (define (drop x)  
   (if (= (order x) 1)
     x
@@ -377,20 +366,7 @@
 		(lower w)))))
         
   
-(define (lower x)
-  (let ((t (project x)))
-    (if (equ? x (rise t))
-	    t
-		x)))  
-
-	
-
-  
-(define (project x)
-   (if (= (order x) 1)
-    x
-   (applygenirc 'project x)))  
-	
+ 
 	
 ;; this can also install to table instead of case 	
 (define (rise x)
@@ -399,18 +375,10 @@
         ((equal? (type x) 'complex) x)
         (else error"unkown type")))
 
-(define (order x)	
-   (display 'order) 
-   (display x)
-     (newline)
-   (cond ((equal? (type x) 'number) 1)
-         ((equal? (type x) 'rational) 2)
-         ((equal? (type x) 'complex) 3)
-         (else error"unkown order")))
 
-(define (number->rational x)  (raise x))
-(define (number->complex x) (raise (raise x)))  
-(define (rational->complex x) (raise x))
+;(define (number->rational x)  (raise x))
+;(define (number->complex x) (raise (raise x)))  
+;(define (rational->complex x) (raise x))
 
 (define (raise n x)
   (if (= 0 n)
@@ -468,15 +436,9 @@
 ; apply can handle this. how ?
 
  	
-(define (install-reduce-package)  
-  (put 'project '(number) (lambda(x) x))
-  (put 'project '(rational) (lambda(x) (rnumer x)))
-  (put 'project '(complex) (lambda(x) (real-part x)))
-  'done)
-  
-(install-reduce-package)  
 
 
+;;  polynomial package -------------------------------------------------
 ;; high dense package
 ;; dense terms (high low 0)
 
@@ -508,10 +470,9 @@
   (put 'make 'dense (lambda(x) (tagx (make-terms x))))
   
   
-  
 'done)
 
-(install-dense-package)
+
 
 
 
@@ -520,29 +481,26 @@
  ;;  terms operations
   (define (tagx data) (add-type 'sparse data))
   
+;; when add-terms , be sure to have a desceding order of terms !!!  
   (define (add-terms terms1 terms2)    
     (cond ((empty-terms? terms1) terms2)
 	      ((empty-terms? terms2) terms1)
 		  (else  
-    		  (add-terms (rest-terms terms1) (add-term  (first-term terms1) terms2)))))
+		     (let ((t1 (first-term terms1))
+			       (t2 (first-term terms2)))
+				(cond ((> (termorder t1) (termorder t2)) (adjoin-term t1 (add-terms (rest-terms terms1) terms2)))
+                      ((< (termorder t1) (termorder t2)) (adjoin-term t2 (add-terms terms1 (rest-terms terms2))))				
+    		          (else (adjoin-term (make-term (termorder t1) (add (coff t1) (coff t2)))
+					                     (add-terms (rest-terms terms1) (rest-terms terms2)))))))))
 					  
-  (define (add-term x terms)   
-    (cond ((empty-terms? terms) x)    	  
-		  ((= (termorder x) (termorder (first-term terms))) (adjoin-term (make-term (termorder x) (add (coff x) (coff (first-term terms))))
-		                                                                 (rest-terms terms)))		 
-          (else (adjoin-term (first-term terms) (add-term x (rest-terms terms))))))
 		  
   (define (sub-terms terms1 terms2)   
-    (cond ((empty-terms? terms1) terms2)
-	      ((empty-terms? terms2) terms1)
-		  (else  
-    		  (sub-terms (rest-terms terms1) (sub-term  (first-term terms1) terms2)))))
+    (add-terms terms1 (neg-terms terms2)))
 					  
-  (define (sub-term x terms)   
-    (cond ((empty-terms? terms) x)    	  
-		  ((= (termorder x) (termorder (first-term terms))) (adjoin-term (make-term (termorder x) (sub (coff x) (coff (first-term terms))))
-		                                                                 (rest-terms terms)))		 
-          (else (adjoin-term (first-term terms) (sub-term x (rest-terms terms))))))		  
+  (define (neg-terms  terms)   
+    (cond ((empty-terms? terms) empty-term-token)  
+          (else (map (lambda(term)(make-term (termorder term) (neg (coff term))))
+              		  terms))))		  
 		  
    		  
   (define (mul-terms terms1 terms2)
@@ -556,8 +514,23 @@
     (if (null? terms) 
 	    '() 
         (adjoin-term  (make-term (+ (termorder x) (termorder (first-term terms)))
-                                		(mul (coff x) (coff (first-term terms))))
-    						(mul-term x (rest-terms terms)))))
+                                 (mul (coff x) (coff (first-term terms))))
+    				  (mul-term x (rest-terms terms)))))
+							
+  (define (div-terms terms1 terms2)   
+    (cond ((null? terms1) (list empty-term-token empty-term-token))
+	      ((<  (termorder (first-term terms1)) (termorder (first-term terms2))) (list empty-term-token terms1))
+		  (else  
+		       (let ((new-o  (- (termorder (first-term terms1)) (termorder (first-term terms2))))
+			         (new-cof (div (coff (first-term terms1)) (coff (first-term terms2)))))                				 
+                        (let ((rest-of-result
+				                 (div-terms (sub-terms terms1
+					                                  (mul-terms (list (make-term new-o new-cof))
+                                                                  terms2))
+										     terms2)))
+					      (list   (add-terms (list (make-term new-o new-cof)) (car rest-of-result))
+					              (cadr rest-of-result)))))))						 
+											 
 		  
   ;; terms object {term}
   (define empty-term-token '())
@@ -592,25 +565,27 @@
   (define (termorder t) (car t))
   (define (coff t) (cdr t))
   
-  (define (all-zero? l)
-     (if (null? l)
-	     true
-		 (if (=zero? (car l))
-		     (all-zero? (cdr l))
-			 false)))
+  ;(define (all-zero? l)
+   ;  (if (null? l)
+	;     true
+	;	 (if (=zero? (car l))
+	;	     (all-zero? (cdr l))
+	;		 false)))
 			 
 
   (put 'make 'sparse (lambda(x) (tagx (make-terms x))))
   (put 'add '(sparse sparse) (lambda(t1s t2s) (tagx (add-terms t1s t2s))))	
   (put 'sub '(sparse sparse) (lambda(t1s t2s) (tagx (sub-terms t1s t2s))))	
   (put 'mul '(sparse sparse) (lambda(t1s t2s) (tagx (mul-terms t1s t2s))))	
-  ;(put 'div'(sparse sparse) (div-term x terms))	
+  (put 'div '(sparse sparse) (lambda(t1s t2s) (tagx (div-terms t1s t2s))))
+  (put 'neg '(sparse) (lambda(terms) (tagx (neg-terms terms))))  
   (put 'make 'term make-term)	
+  (put '=zero? '(sparse) (lambda(terms) (empty-terms? terms)))
 	 
 'done)
 
- (install-low-dense-package)
-
+(install-low-dense-package)
+(install-dense-package)
  
 (define (add-terms terms1 terms2)
    (applygenirc 'add terms1 terms2))
@@ -620,20 +595,18 @@
    
 (define (mul-terms terms1 terms2)
    (applygenirc 'mul terms1 terms2))
-
    
+(define (div-terms terms1 terms2)
+   (applygenirc 'div terms1 terms2))   
+
+(define (neg-terms terms )
+   (applygenirc 'neg terms)) 
  
 ;; poly package
 
 (define (install-poly-package)
   (define (tagx x) (add-type 'poly x))
   
-  (define (dense? terms) 
-     (let (( lens (len terms)))
-	    (let ((hl (hlow terms)))		 
-		  (if (> (/ lens hl) (/ 1 2))
-		      true
-			  false))))
 		  
   (define (make-poly var terms)        
     	(cons var terms))		 
@@ -651,13 +624,25 @@
     (if (equal? (var x) (var y))
 	    (make-poly (var x)
 		           (sub-terms (terms x) (terms y))) 
-		(error "can not sub poly")))		
+		(error "can not sub poly")))	
+
+  (define (neg-poly x )   
+	    (make-poly (var x)
+		           (neg-terms (terms x) ))) 
+				
 		
   (define (mul-poly x y)
     (if (equal? (var x) (var y))
 	    (make-poly (var x)
 		           (mul-terms (terms x) (terms y))) 
-		(error "can not mul ploy")))		
+		(error "can not mul ploy")))
+		
+  (define (div-poly x y)
+    (if (equal? (var x) (var y))
+	    (make-poly (var x)
+		           (div-terms (terms x) (terms y))) 
+		(error "can not div ploy")))
+		
 		
  	
   (put 'make 'poly (lambda(v t) (tagx (make-poly v t))))
@@ -667,8 +652,9 @@
   (put 'add '(poly poly) (lambda (x y) (tagx (add-poly x y))))
   (put 'sub '(poly poly) (lambda (x y) (tagx (sub-poly x y))))
   (put 'mul '(poly poly) (lambda (x y) (tagx (mul-poly x y))))
-  (put '=zero? '(poly) (lambda(x) (all-zero? (map coff (terms x)))))
-  ;(put 'neg '(poly) (lambda(x) 
+  (put 'div '(poly poly) (lambda (x y) (tagx (div-poly x y))))
+  (put '=zero? '(poly) (lambda(x) (=zero? (terms x))))
+  (put 'neg '(poly) (lambda(x) (tagx (neg-poly x))))
   
   'done)  
   
@@ -700,11 +686,5 @@
 (install-poly-package)
 
 
-(define p1 (make-poly 'x (make-terms-sparse (list (make-term 2 3) (make-term 1 3)))))
-(define p2 (make-poly 'x (make-terms-sparse (list (make-term 1 3)))))
-(define p3 (make-poly 'x (make-terms-sparse (list (make-term 2 3) (make-term 1 5)))))
-(define p4 (make-poly 'x (make-terms-sparse (list (make-term 1 3) (make-term 0 1)))))
-(define p5 (make-poly 'x (make-terms-sparse (list (make-term 0 2)))))
-(define p6 (make-poly 'x (make-terms-dense (list 3 3 0))))
-(define p7 (make-poly 'x (make-terms-dense (list  3 0))))
+
 
