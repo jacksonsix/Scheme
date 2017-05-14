@@ -533,6 +533,10 @@
     				  (mul-term x (rest-terms terms)))))
 							
   (define (div-terms terms1 terms2)   
+    (display terms1)
+	(display '--)
+	(display terms2)
+	(newline)
     (cond ((null? terms1) (list empty-term-token empty-term-token))
 	      ((<  (termorder (first-term terms1)) (termorder (first-term terms2))) (list empty-term-token terms1))
 		  (else  
@@ -554,9 +558,21 @@
     (car (div-terms a b)))  
 											 
   (define (gcd-terms a b)
-    (if (empty-terms? b)
+   
+    (define (factor a b)
+	  (let ((o1 (termorder (first-term a)))
+	        (o2 (termorder (first-term b)))
+			(c (coff (first-term b))))
+		 (expt c (+ 1 (- o1 o2)))))
+	(define (bgcd-terms a b)	 
+       (if (empty-terms? b)
 	    a
-		(gcd-terms b (remainder-terms a b))))
+		(bgcd-terms b (remainder-terms (mul-terms a  (list (make-term 0 (factor a b))))
+                               	  b))))
+    (let ((bg (bgcd-terms a b))) 								  
+	  (map (lambda(term) (make-term (termorder term) (div (coff term) (apply gcd (map (lambda(t) (coff t))
+                                                                                      bg)))))
+         bg)))																			
 	      
   
   ;; terms object {term}
@@ -747,6 +763,8 @@
   
 (define (get-multi-var)
   (get 'multi 'var ))   
+  
+  
   
 (install-poly-package)
 
