@@ -2,8 +2,6 @@
 ;; underlying evaluator is working , when input (* 1 2). it eval before this procedure. 
 
 (define (eval exp env) 
-;; 2,3 stage of matching, because the is an order of the branches
-;(let ((matched 'false))
  (cond  ((self-value? exp)   exp)
         ((variable? exp)   (lookup-variable-value exp env))		
         ((inlist (get-type exp)) ((get (get-type exp)) exp env)) 
