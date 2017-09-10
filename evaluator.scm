@@ -5,11 +5,14 @@
  (cond  ((self-value? exp)   exp)
         ((variable? exp)   (lookup-variable-value exp env))		
         ((quoted? exp) (quote-text exp))
+		((if-stmt? exp) (eval-if exp env))
+		((assignment? exp) (eval-assignment exp env))
+		((cond? exp) (eval-cond exp env))
         ((definition? exp) (eval-definition exp env))
-        ((begin? exp) (eval-begin exp env))
-        		
+        ((begin-stmt? exp) (eval-begin exp env))
+        ((lambda? exp) (eval-lambda exp env))		
 		((pair? exp)   (applyx (eval (operator exp) env)  
-		                                                (list-of-values (operand exp) env)))
+		                       (list-of-values (operand exp) env)))
 		(else  (error "unknown type" exp))))
 		
 ;;
@@ -17,38 +20,29 @@
  (cond ((primitive-procedure? procedure) (apply-primitive-procedure procedure arguments))
        ((compound-procedure? procedure)  (eval-sequence (procedure-body procedure)
 	                                                    (extend-environment (procedure-parameters procedure)
-														                    arguments
+														                     arguments
 																			(procedure-environment procedure))))
 		(else (error "unknow apply") procedure arguments)))																	
  
- 
-(define primitive-procedures 
-	(list
-		(list 'car car)
-		(list 'cdr cdr)
-		(list 'cons cons)
-		(list 'null? null?)	
-		(list '* *)
-		(list '+ +)
-		))
-			
-(define (primitive-procedure-names)
-  (map car primitive-procedures))
   
-(define (primitive-procedure-objects)
-  (map (lambda (item) 
-           (list 'primitive (cadr item)))  
-       primitive-procedures ))
-
-  
-			
-(define (find name sets)
-  (cond ((null? sets) false)
-        ((eq? (caar sets) name) (cdar sets))
-        (else (find name (cdr sets)))))		
 			
 (define (eval-lambda exp env)
   (make-procedure (lambda-para exp) (lambda-body exp) env))
+  
+;; lambda expression
+(define (lambda? exp)
+  (tagged-list? exp 'lambda))
+  
+(define (lambda-para exp)
+  (cadr exp))
+
+(define (lambda-body exp)
+  (cddr exp))
+
+(define (make-lambda para body)
+  (cons 'lambda (cons para body)))
+ ;; (list 'lambda para body))  
+  
 	
 (define (make-procedure para body env)
   (list 'procedure para body env))
@@ -65,16 +59,17 @@
 (define (primitive-procedure? procedure) 
   (tagged-list? procedure 'primitive))
   
+(define (compound-procedure? procedure)
+   (tagged-list? procedure 'procedure))  
+  
 	  
 (define (apply-primitive-procedure procedure arguments)
   (apply-in-underlying-scheme (primitive-implementation procedure) arguments))	  
  
 (define (primitive-implementation proc) (cadr proc)) 
+
 (define apply-in-underlying-scheme apply)
  
- 
-(define (compound-procedure? procedure)
-   (tagged-list? procedure 'procedure))
  
  
 (define (list-of-values exps env)
@@ -83,7 +78,6 @@
 	  (cons (eval (first-operand exps) env)
        	    (list-of-values (rest-operand exps) env))))
  
-;; 
  
 (define (self-value? exp)
   (cond ((number? exp) true)
@@ -137,21 +131,12 @@
                    (cddr exp))))
 					
 					
-;; lambda expression
-(define (lambda? exp)
-  (tagged-list? exp 'lambda))
-  
-(define (lambda-para exp)
-  (cadr exp))
-
-(define (lambda-body exp)
-  (cddr exp))
-
-(define (make-lambda para body)
-  (cons 'lambda (cons para body)))
- ;; (list 'lambda para body))
 
 
+(define (eval-if exp env)
+ (if (true? (eval (if-pred exp) env))
+     (eval (if-consequenct exp) env)
+	 (eval (if-alt exp) env)))
   
 (define (if-stmt? exp)
   (tagged-list? exp 'if))
@@ -170,6 +155,8 @@
 (define (make-if pred consequenct alt)
   (list 'if pred consequenct alt))
 
+  
+  
 (define (begin-stmt? exp)
   (tagged-list? exp 'begin))
 
@@ -193,9 +180,7 @@
 		((last-exp? sequence) (first-exp sequence))
 		(else (make-begin sequence))))  
 		
-		
 
-		
 ;; procedure? is the very last cond, it is not possible to enum all procedure name		
 (define (procedure? exp)
   (pair? exp))
@@ -208,8 +193,10 @@
 
 (define (no-operands? ops)
   (null? ops))
+  
 (define (first-operand ops)
   (car ops))
+  
 (define (last-operand? ops)
   (null? (cdr ops)))
 
@@ -218,6 +205,10 @@
 
  
 ;; cond expression
+
+(define (eval-cond exp env)
+ (eval (cond->if  exp) env))  
+ 
 (define (cond? exp)
   (tagged-list? exp 'cond))
 
@@ -230,37 +221,11 @@
 (define (cond-actions clauses)
   (cdr clauses))
   
-;; this the place to make the specail form  =>     
-(define (cond->if exp)
-  (iter-expand-clauses (cond-clauses exp)))  
-  
-;;; pure sequence into nested forms
 
-(define (iter-expand-clauses clauses)
-  (if (null? clauses)
-      'false
-	  (let ((first (car clauses))
-	        (rest (cdr clauses)))
-			
-	  (if   (cond-else-clause? first) 
-	        (if (null? rest)
-			    (sequence->exp (cond-actions first))
-				(error "Else clause is not the last" clauses))
-			(make-if (cond-pred first)
-			;; specail form =>
-			               (if (specail? first)
-						       (make-procedure  (specail-pred first) ((specail-proc first) (specail-pred first)) env)
-						       (sequence->exp (cond-actions first)))
-						   (iter-expand-clauses rest))))))
-					   
-  
-  
-(define (eval-if exp env)
- (if (true? (eval (if-pred exp) env))
-     (eval (if-consequenct exp) env)
-	 (eval (if-alt exp) env)))
+   
+(define (eval-begin exp env)   
+  (eval-sequence (begin-actions exp) env))  
 	 
-
 (define (eval-sequence exps env) 
   (cond ((last-sequence? exps) (eval (first-sequence exps) env))
         (else (eval (first-sequence exps) env)
@@ -272,6 +237,7 @@
   
 (define (first-sequence exps)
   (car exps))
+  
 (define (rest-sequence exps)
   (cdr exps))  
 
@@ -291,54 +257,7 @@
                      env)
   'ok)
 
-  ;;((and-stmt? exp) (eval-and-stmt exp env))
-(define (make-and-stmt exps)
-  (list 'and-stmt exps))
-
-  
-(define (and-stmt? exp)
-  (tagged-list? exp 'and-stmt))
-
-(define (eval-and-stmt exp env) 
-	(define (eval-terms terms)
-	  (cond ((null? terms) true)
-			((not (eval (car terms) env) false))	 
-			(else (eval-terms (cdr terms) env))))
-    (eval-terms (cdr exp)))
-	
-;;
-(define (make-or-stmt exps)
-  (list 'or-stmt exps))
-
-  
-(define (or-stmt? exp)
-  (tagged-list? exp 'or-stmt))
-
-(define (eval-or-stmt exp env) 
-	(define (eval-terms terms)
-	  (cond ((null? terms) false)
-			((true? (eval (car terms) env) true))	 
-			(else (eval-terms (cdr terms) env))))
-    (eval-terms (cdr exp)))	
-	
-	
-;; =>  (list 'specail pred proc)
-;;  
-;;  (eq? (car (cond-actions first)) '=>))
-(define (specail? exp)
-  (tagged-list? exp 'specail))
-
-(define (make-specail pred proc)
-  (list 'specail pred proc))
-
-(define (specail-pred exp)
-  (cadr exp))
-  
-(define (specail-proc exp)
-  (caddr exp))
-  
-  
-;;(define (let->combination exp)
+ 
 
 ;; in small evalator , it has to eval true/false by explicit call underlying eq?
 (define (true? x)
@@ -435,7 +354,30 @@
     (scan (frame-variables frame) (frame-values frame))))		   
             		   
   
+ ;;; prepare environment for run evaluator
+;;;----------------------------------------- 
+  
 (define the-empty-environment '())		
+
+
+(define primitive-procedures 
+	(list
+		(list 'car car)
+		(list 'cdr cdr)
+		(list 'cons cons)
+		(list 'null? null?)	
+		(list '* *)
+		(list '+ +)
+		))
+			
+(define (primitive-procedure-names)
+  (map car primitive-procedures))
+  
+(define (primitive-procedure-objects)
+  (map (lambda (item) 
+           (list 'primitive (cadr item)))  
+       primitive-procedures ))	
+
 
 (define (setup-env)
   (let ((initial-env 
@@ -446,7 +388,9 @@
 	(define-variable! 'false false initial-env)
 	initial-env))
 	
-;;(define env0 (setup-env))	
+
+(define env0 (setup-env))	
+
 (define (driver)
   (display "Please input expression")
   (newline)
@@ -471,82 +415,10 @@
                     '<procedure-env>))
     (display object)))
 	
-  
-	;; debug functions
+	
 
-;; dict has 2 list names, values
-;; dict =  (cons names values)	
-(define namelist  (cons 'names '()))
-(define valuelist (cons 'values '()))			
-(define dict (cons namelist valuelist))
-
-(define (extend-dict funcname)
-  (define (scan names values)
-    (cond ((null? names) (set-cdr! namelist (cons funcname  (cdr namelist))) (set-cdr! valuelist (cons 1  (cdr valuelist))))
-          ((eq? funcname (car names)) (set-car!  values (+ (car values) 1)))
-          (else (scan (cdr names) (cdr values)))))
-  (scan (car dict) (cdr dict)))
   
 	
-(define (clear-dict)
-  (set-cdr! namelist '())
-  (set-cdr! valuelist '()))  
-	  
-	  
-;; get type of expression
-(define (get-type exp)
-  (cond ((eq? 'primitive (car exp)) 'procedure)
-        ((eq? 'procedure (car exp)) 'procedure)
-		(else (car exp))))
-        
-		 
-;;; put, get procedure in a dict
-
-(define funcdict (cons '() '()))
-
-
-(define (make-node name proc)
-   (cons name proc))
-
-(define (put funcname procedure) 
-    (define (scan node)	
-      (cond ((null? node) (set-car! funcdict (cons (make-node funcname procedure) (car funcdict))))
-            ((eq? funcname (car (car node)))  (set-cdr! (car node) procedure))
-            (else (scan (cdr node)))))
-    (scan (car funcdict)))
-	
-(define (get funcname)
-	(define (scan node)	
-      (cond ((null? node) (error "unbound  procedure"))
-            ((eq? funcname (car (car node)))  (cdr (car node)))
-            (else (scan (cdr node)))))
-    (scan (car funcdict)))
-   
-   
-(define (eval-cond exp env)
- (eval (cond->if  exp) env))   
-   
-(define (eval-begin exp env)   
-  (eval-sequence (begin-actions exp) env))   
-   
-(define (inlist type)
-  (cond ((eq? 'quote type) true) 
-		((eq? 'set! type) true) 
-		((eq? 'define type) true) 
-		((eq? 'if type) true) 
-		((eq? 'lambda type) true) 
-		((eq? 'begin  type) true) 
-		((eq? 'cond  type) true) 
-		(else false)))
-   
-(define (install)
-  (put 'quote get-quote)
-  (put 'set! eval-assignment)
-  (put 'define eval-definition)
-  (put 'if eval-if)
-  (put 'lambda eval-lambda)
-  (put 'begin eval-begin)
-  (put 'cond eval-cond))
  
   
 	
