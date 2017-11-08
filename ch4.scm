@@ -1,26 +1,27 @@
- (define (liars)
+           (define (liars)
             (let ((B (amb 1 2 3 4 5))
                   (E (amb 1 2 3 4 5))
                   (J (amb 1 2 3 4 5))
                   (K (amb 1 2 3 4 5))
                   (M (amb 1 2 3 4 5)))
-        (require (distinct? (list B E J K M)))				  
+				  
+                (require (distinct? (list B E J K M)))				  
 				(require (or (and (= K 2) (not (= B 3))) 
 				             (and (not (= K 2)) (= B 3))))
 				(require (or (and (= E 1) (not (= J 2))) 
-				             (and (not (= E 1)) (not (= J 2)))))
+				             (and (not (= E 1)) (= J 2))))
 				(require (or (and (= J 3) (not (= E 5))) 
-				             (and (not (= J 3)) (not (= E 5)))))
+				             (and (not (= J 3)) (= E 5))))
 				(require (or (and (= K 2) (not (= M 4))) 
-				             (and (not (= K 2)) (not (= M 4)))))
+				             (and (not (= K 2))  (= M 4))))
 				(require (or (and (= M 4) (not (= B 1))) 
-				             (and (not (= M 4)) (not (= B 1)))))
+				             (and (not (= M 4))  (= B 1))))
 								  
-             (list  (list 'B B)
-             (list 'E E)
-					   (list 'J J)
-					   (list 'K K)
-					   (list 'M M))))))	
+                (list  (list 'B B)
+                       (list 'E E)
+		       (list 'J J)
+		       (list 'K K)
+		       (list 'M M))))))		
              
              
 ;;------------------------------------------------------------------------------------------------------             
@@ -620,7 +621,7 @@
                    (if e2
                        true
                        false)))
-			(define (and e1 e2)
+	    (define (and e1 e2)
                (if e1                  
                    (if e2
                        true
@@ -632,23 +633,24 @@
                   (J (amb 1 2 3 4 5))
                   (K (amb 1 2 3 4 5))
                   (M (amb 1 2 3 4 5)))
+				  
                 (require (distinct? (list B E J K M)))				  
 				(require (or (and (= K 2) (not (= B 3))) 
 				             (and (not (= K 2)) (= B 3))))
 				(require (or (and (= E 1) (not (= J 2))) 
-				             (and (not (= E 1)) (not (= J 2)))))
+				             (and (not (= E 1)) (= J 2))))
 				(require (or (and (= J 3) (not (= E 5))) 
-				             (and (not (= J 3)) (not (= E 5)))))
+				             (and (not (= J 3)) (= E 5))))
 				(require (or (and (= K 2) (not (= M 4))) 
-				             (and (not (= K 2)) (not (= M 4)))))
+				             (and (not (= K 2))  (= M 4))))
 				(require (or (and (= M 4) (not (= B 1))) 
-				             (and (not (= M 4)) (not (= B 1)))))
+				             (and (not (= M 4))  (= B 1))))
 								  
                 (list  (list 'B B)
                        (list 'E E)
 					   (list 'J J)
 					   (list 'K K)
-					   (list 'M M))))))					   
+					   (list 'M M))))))						   
  				  
 
 
