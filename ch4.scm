@@ -46,7 +46,34 @@
 					   (list 'B B)
 					   (list 'P P))))))	
  
-             
+ 
+            (define (reduce x y)
+              (if (= y 0)
+                   x
+                  (reduce (- x 1) (- y 1))))
+            (define (eight)
+               (let ((A (list 0 (amb 0 1 2 3 4 5 6 7)))
+					 (B (list 1 (amb 0 1 2 3 4 5 6 7)))
+					 (C (list 2 (amb 0 1 2 3 4 5 6 7))))
+					 ;(D (list 3 (amb 0 1 2 3 4 5 6 7)))
+					 ;(E (list 4 (amb 0 1 2 3 4 5 6 7)))
+					 ;(F (list 5 (amb 0 1 2 3 4 5 6 7)))
+					 ;(G (list 6 (amb 0 1 2 3 4 5 6 7)))
+					 ;(H (list 7 (amb 0 1 2 3 4 5 6 7))))
+                 (require (distinct? (list (cadr A) (cadr B) (cadr C)))) ; (cadr D) (cadr E) (cadr F) (cadr G) (cadr H))))
+                 (require (distinct? (list (reduce (car A) (cadr A)) (reduce (car B) (cadr B)) (reduce (car C) (cadr C)))))
+                                           ;(reduce (car D) (cadr D)) (reduce (car E) (cadr E)) (reduce (car F) (cadr F))
+                                           ;(reduce (car G) (cadr G)) (reduce (car H) (cadr H)))))
+          (list (list 'A A)
+				(list 'B B)
+				(list 'C C)
+				;(list 'D D)
+				;(list 'E E)
+				;(list 'F F)
+				;(list 'G G)
+				;(list 'H H)
+				))))) 
+ 
 ;;------------------------------------------------------------------------------------------------------             
 ;; complete file to run amb
 
