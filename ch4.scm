@@ -22,7 +22,30 @@
 		       (list 'J J)
 		       (list 'K K)
 		       (list 'M M))))))		
-             
+ 
+ 
+            (define (father-yacht-daughter)
+            (let ((M (list 'Mary                                  'Lora ))
+			      (C (list (amb 'Mary 'Lora 'Melissa 'Rosa 'Gab)  'Melissa ))
+			      (H (list (amb 'Mary 'Lora 'Melissa 'Rosa 'Gab)  'Rosa ))
+			      (B (list 'Melissa                               'Gab))
+			      (P (list (amb 'Mary 'Lora 'Melissa 'Rosa 'Gab) (amb 'Mary 'Lora 'Melissa 'Rosa 'Gab))))
+                  
+				  
+                (require (distinct? (list (car M) (car C) (car H) (car B) (car P))))
+                (require (distinct? (list (cadr M) (cadr C) (cadr H) (cadr B) (cadr P))))				
+				(require (not (equal? (car M) (cadr M))))
+				(require (not (equal? (car C) (cadr C))))
+				(require (not (equal? (car H) (cadr H))))
+				(require (not (equal? (car B) (cadr B))))
+				(require (not (equal? (car P) (cadr P))))
+								  
+                (list  (list 'M M)
+                       (list 'C C)
+					   (list 'H H)
+					   (list 'B B)
+					   (list 'P P))))))	
+ 
              
 ;;------------------------------------------------------------------------------------------------------             
 ;; complete file to run amb
