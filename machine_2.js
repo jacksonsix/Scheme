@@ -12,7 +12,7 @@ function make_machine(reg_names){
 
 //
 function Machine_base(){
-  this.registers = [];
+  this.registers = {};
   this.pc = null;
   this.pcindex = 0;
   this.flag = false;
@@ -38,8 +38,21 @@ function Machine_base(){
 	  while(this.pc != null && i < 200){	   	
 		i++;
 		if(this.trace){
+			var m ='';
+			var keys = Object.keys(this.registers);
+			for(var i = 0; i< keys.length;i++){
+				var key = keys[i];
+				var val = this.get_reg(key);
+				if(val !== 'unassigned'){
+					m += key +':' + this.get_reg(key)+'; ';
+				}				
+			}
+			var sta ='';
+			for(var i=0;i< this.stack.length;i++){
+				sta += ' |' + this.stack[i]  ;
+			}
 			//print pc command
-			console.log(this.pc.cmdtext);
+			console.log(this.pc.cmdtext + '| '+m + 'stack' + sta);
 		}
 		this.pc.func();
 		this.counting++;
@@ -49,7 +62,7 @@ function Machine_base(){
   
   this.get_stack = function getstack(){ return this.stack;}
   this.get_operations = function getops(){return this.ops;}	
-  this.set_flag = function setflag(value){ this.falg = value;}
+  this.set_flag = function setflag(value){ this.flag = value;}
   this.advance_pc = function advance_pc(machine){	                           
 								  this.pcindex += 1;
 								  this.pc =  this.ops[this.pcindex];
@@ -73,14 +86,12 @@ function asseble(controller_text,machine,libs){
 	machine.ops = update_insts(commands, machine);
 }
 
-
 function update_insts(insts,machine){
 	insts.forEach(function(inst){
 		inst.func = make_exe_proc(inst,machine);
 	});
 	return insts;
 }
-
 
 // from instruction to procedure
 function make_exe_proc(inst,machine){
@@ -363,7 +374,7 @@ function make_test(inst,machine){
 			 if(cond){
 				 machine.flag = true;
 			 }else{
-				 machine.falg = false;
+				 machine.flag = false;
 			 }
 		}		
 		machine.advance_pc();
@@ -709,7 +720,8 @@ function test_evaluator(){
 		controller_text.push(ss[i]);
 	}
 	// setup machine
-	var regs = ['val','continue','exp','env','proc','argl','unev'];	
+	//var regs = ['val','continue','exp','env','proc','argl','unev'];	
+	var regs =['val','b','n','continue','product','counter','t'];
 	var m =  make_machine(regs);	
     
 	// assemble machine with libs and machine code
