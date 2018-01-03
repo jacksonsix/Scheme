@@ -22,6 +22,8 @@ function Machine_base(){
   this.libs = {};
   this.counting = 0;
   this.trace = true;
+  this.maxStack = 0;
+  this.numPush = 0;
   
   this.get_reg = function get_reg(reg){	 
 	  return this.registers[reg];
@@ -35,7 +37,7 @@ function Machine_base(){
 	  console.log('Machine started!');
 	  this.pc = this.ops[this.pcindex];
 	  var i = 0;
-	  while(this.pc != null && i < 200){	   	
+	  while(this.pc != null && i < 1000){	   	
 		i++;
 		if(this.trace){
 			var m ='';
@@ -44,7 +46,19 @@ function Machine_base(){
 				var key = keys[i];
 				var val = this.get_reg(key);
 				if(val !== 'unassigned'){
-					m += key +':' + this.get_reg(key)+'; ';
+					var  content =  this.get_reg(key);
+					if(typeof(content) ==='object'){
+						var  ckeys = Object.keys(content);
+						var serialized = '';
+						for(var j=0; j< ckeys.length;j++){
+							var ckey = ckeys[j];
+							serialized +=  ckey + ':' + content[ckey] + '|';
+						}
+						m += key +':' + serialized+'; ';
+					}else{
+						m += key +':' + content+'; ';
+					}
+					
 				}				
 			}
 			var sta ='';
@@ -54,9 +68,17 @@ function Machine_base(){
 			//print pc command
 			console.log(this.pc.cmdtext + '| '+m + 'stack' + sta);
 		}
+		if(this.stack.length > this.maxStack){
+			this.maxStack = this.stack.length;
+		}
 		this.pc.func();
 		this.counting++;
-	  } 
+	  }
+
+     // after the execution, print the statistics
+        console.log('Total steps: ' + this.counting);
+        console.log('Max stack depth: ' + this.maxStack);	
+        console.log('Num of push: ' + this.numPush);		
 
   }
   
@@ -239,6 +261,14 @@ function gen(info){
 					 }
 				 }
 				 break;
+			 case 'perform':
+                 obj.type = 'perform';
+				 obj.operator = proc.pop();
+				 obj.params =[];
+				 while(proc.length>0){
+					 obj.params.push(proc.pop());
+				 }
+                 break;				 
 			 case 'reg':
 				 obj.type = 'reg';
 				 obj.name = proc.pop();
@@ -363,9 +393,11 @@ function make_test(inst,machine){
 			left = machine.get_reg(left.name);
 		}
 		
-		if(right.type ==='const'){
+		if(typeof(right) ==='undefined'){
+			// do nothing
+		}else if(right.type ==='const'){
 			right = right.value;
-		}else{
+		}else {
 			right = machine.get_reg(right.name);
 		}
 	
@@ -440,6 +472,7 @@ function make_save(inst,machine){
 	return function(){
 		var val = machine.get_reg(inst.reg);
 		machine.stack.push(val);
+		machine.numPush++;
 		machine.advance_pc();
 	}
 }
@@ -454,8 +487,9 @@ function make_restore(inst,machine){
 }
 
 function make_perform(inst,machine){
-	var perform = inst.perform;
-	var proc = make_operation_exp(perform,'',machine);
+	var perform = inst.operator;
+	var paras = inst.params;
+	var proc = make_operation_exp(perform,paras,machine);
 
 	return function(){
 			if(proc != null){
@@ -720,12 +754,24 @@ function test_evaluator(){
 		controller_text.push(ss[i]);
 	}
 	// setup machine
-	//var regs = ['val','continue','exp','env','proc','argl','unev'];	
-	var regs =['val','b','n','continue','product','counter','t'];
+	var regs = ['val','continue','exp','env','proc','argl','unev'];	
+	//var regs =['val','b','n','continue','product','counter','t'];
 	var m =  make_machine(regs);	
     
 	// assemble machine with libs and machine code
 	asseble(controller_text,m,libs);
+	// env has frames list.  new frame in front, like stack
+	// frame is key/value pairs.  implement by object
+	var global_env = [];
+	m.set_reg('env',global_env);
+	var done ={};
+	done.type = 'label';
+	done.name = 'done';
+	m.set_reg('continue',done);
+	var test_exp = {};
+	test_exp.type = 'quote';
+	test_exp.value = 'hello world';	
+	m.set_reg('exp',test_exp);
 	m.start();
 	
 	console.log('Machine finish!');
