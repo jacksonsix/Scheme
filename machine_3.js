@@ -48,7 +48,7 @@ function read_exp_text(scheme_text){
 }
 
 // generate proc
-function gen(info){
+env.gen  = function (info){
 	var text = info;
 	var seprator = ['(',')',' '];
 	var stack =[];
@@ -67,9 +67,15 @@ function gen(info){
 			var word ='';
 			while(seprator.indexOf(ch) == -1){
 				word += ch;				
-				if(text.length ==0) break;
-				text = text.substring(1);
-				ch = text[0];
+				if(text.length ==0 ){
+					break;
+				}else if(text.length ==1 ){
+					text = '';
+					break;
+				}else{
+					text = text.substring(1);				
+				    ch = text[0];
+				} 
 			}
 			return word;
 		}
@@ -84,10 +90,8 @@ function gen(info){
 				
 				if(token ==='('){
 				   // push to stack
-				   // the first token is operator
-				 
-				   stack.push(token);
-				   
+				   // the first token is operator				 
+				   stack.push(token);				   
 				} else if(token===')'){
 				   // begin to pop until operator, close
 				   // then  apply operator on operands
@@ -100,6 +104,12 @@ function gen(info){
 				   var result = applyv(proc);
 				   stack.push(result);
 				   
+				}else if(token[0] =='\''){
+					var proc = [];					
+					proc.push(token.slice(1));	
+					proc.push(token[0]);					
+					var result = applyv(proc);
+					stack.push(result);
 				} else{				
 					stack.push(token);
 				}
@@ -107,67 +117,82 @@ function gen(info){
 		}while(token != null )
 
 	}
-	
+		function isNumeric(n) {
+		  return !isNaN(parseFloat(n)) && isFinite(n);
+		}
 		function  applyv(proc){
 		// return an object, as the parse result
 		 // pop out operator, 	 	   
-		   var obj = {};
-		  
-		   var op = proc.pop();
-		   switch(op){
-			 case 'if':
-				 obj.type = 'if';
-				 obj.pred = proc.pop();
-				 obj.conseq = proc.pop(); 
-				 obj.alt = proc.pop();
-				 break;
-			 case 'begin':
-				 obj.type = 'begin';
-				 obj.exps = proc.pop();
-				 break;		 
-			 case 'lambda':
-				 obj.type = 'lambda';
-				 obj.parameters = proc.pop();
-				 obj.body = proc.pop();
-				 break;
-			 case 'application':
-				 obj.type ='application';
-				 obj.operator = proc.pop();
-				 obj.oprands = proc.pop();
-				 obj.env = proc.pop();
-				 break;
-			 case 'define':
-				 obj.type ='definition';
-				 obj.variable = proc.pop();
-				 obj.value = proc.pop();
-				 break;
-			 case 'set!':
-				 obj.type = 'assign';
-				 obj.variable = proc.pop();
-				 obj.value = proc.pop();
-				 break;
-			 case '\'':
-				 obj.type ='quote';
-				 obj.text = proc.pop();
-				 break;
-			 case 'variable':
-				 obj.type = 'variable';
-				 obj.value = proc.pop();
-				 break;
-			 case 'self':
-				 obj.type = 'self';
-				 obj.value = proc.pop();
-				 break;			 
-		   default:
-				break;	   
-		   }  
+		 // apply again in case number, vaiable, check here
+		 if(typeof(proc) =='object'){
+			 if(proc.type){
+				 return proc;  // already parsed
+			 }
+		 }
+  		  var obj = {};
+		  if(!Array.isArray(proc)){
+			  // expression has only 1 part. ,  self_eval, variable.
+			  if(isNumeric(proc)  ){
+				  obj.type = 'self';
+				  obj.value = proc;
+			  }else{
+				  obj.type = 'variable';
+				  obj.value = proc;
+			  }
+			  
+		  }else{
+			   var op = proc.pop();
+			   switch(op){
+				 case 'if':
+					 obj.type = 'if';
+					 obj.pred = applyv(proc.pop());
+					 obj.conseq = applyv(proc.pop()); 
+					 obj.alt = applyv(proc.pop());
+					 break;
+				 case 'begin':
+					 obj.type = 'begin';
+					 obj.exps =[];
+					 while(proc.length>0){
+						 var p = proc.pop();
+						 obj.exps.push(applyv(p));
+					 }				 
+					 break;		 
+				 case 'lambda':
+					 obj.type = 'lambda';
+					 obj.parameters = proc.pop();
+					 obj.body = proc.pop();
+					 break;
+				 case 'application':
+					 obj.type ='application';
+					 obj.operator = proc.pop();
+					 obj.oprands = proc.pop();
+					 obj.env = proc.pop();
+					 break;
+				 case 'define':
+					 obj.type ='definition';
+					 obj.variable = proc.pop();
+					 obj.value = applyv(proc.pop());
+					 break;
+				 case 'set!':
+					 obj.type = 'assign';
+					 obj.variable = proc.pop();
+					 obj.value = applyv(proc.pop());
+					 break;
+				 case '\'':
+					 obj.type ='quote';
+					 obj.text = proc.pop();
+					 break;		 
+			   default:
+					break;	   
+			   }  
+		  }	   
 		   
-		   return  obj; 	   	   
+		  return  obj; 	   	   
 	}
 	
 	parse();	
 	var result = stack.pop();
-	return result;
+	return applyv(result);
 }
 
   return env;	
@@ -189,7 +214,7 @@ function setup_eval(){
 		return exp.type ==='assign';
 	}
 	env.define00 = function(exp){
-		return exp.type ==='define';
+		return exp.type ==='definition';
 	}
 	env.if00 = function(exp){
 		return  exp.type ==='if';
@@ -203,8 +228,11 @@ function setup_eval(){
 	env.application00 = function(exp){
 		return exp.type ==='application';
 	}	
-	env.quote_text = function(exp){
+	env.self_value = function(exp){
 		return exp.value;
+	}
+	env.quote_text = function(exp){
+		return exp.text;
 	}
 	env.lookup_var_env = function(variable,env){
 		// lookup variable in the env object.
@@ -212,12 +240,23 @@ function setup_eval(){
 			var frame = env[i];    
 			var keys = Object.keys(frame);
 			for(var j=0; j< keys.length;j++){
-				if(keys[j] === variable){
-					return frame[keys[j]];
+				if(keys[j] === variable.value){
+					return frame[variable.value];
 				}
 			}
 		}
 		return 'undefined';
+	}
+	env.define_var = function(exp){
+		return exp.variable;
+	}
+	env.define_value = function(exp){
+		return exp.value;
+	}
+	env.define_variable = function(variable,val,env){
+		var frame = env[0];		
+		frame[variable] = val;
+		return  'ok';
 	}
 	return env;
 }
@@ -301,19 +340,19 @@ var machine_code =
 (test (op quoted00) (reg exp));\
 (branch (label eval_quote));\
 (test (op assign00) (reg exp));\
-(branch (label eval_assgin));\
+(branch (label ev_assign));\
 (test (op define00) (reg exp));\
-(branch (label eval_define));\
+(branch (label ev_define));\
 (test (op if00) (reg exp));\
-(branch (label eval_if));\
+(branch (label ev_if));\
 (test (op lambda00) (reg exp));\
 (branch (label eval_lambda));\
 (test (op begin00) (reg exp));\
-(branch (label eval_begin));\
+(branch (label ev_begin));\
 (test (op application00) (reg exp));\
 (branch (label eval_application));\
 eval_self;\
-(assign val (reg exp));\
+(assign val (op self_value) (reg exp));\
 (goto (reg continue));\
 eval_variable;\
 (assign val (op lookup_var_env) (reg exp) (reg env));\
@@ -447,7 +486,7 @@ define_continue;\
 (restore continue);\
 (restore env);\
 (restore unev);\
-(perform (op define_variable!) (reg unev) (reg val) (reg env));\
+(perform (op define_variable) (reg unev) (reg val) (reg env));\
 (assign val (const ok));\
 (goto (reg continue));\
 done;\
