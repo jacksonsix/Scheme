@@ -673,78 +673,6 @@ function Memory(){
 
 ////////////////////////////////////////////////////////       test part     //////////////////////////////////////////////////////////////////
 
-function setup(){
-	var env = {};
-	env.lessthan = function(left,right){
-		return left < right;
-	}
-	env.equal = function(left,right){
-		return left == right;
-	}
-	env.bigthan = function(left,right){
-		return left > right;
-	}
-	env.add = function(left,right){
-		return left + right;
-	}
-	env.rem = function(a,b){
-		return a % b;
-	}
-	env.mul = function(a,b){
-		return a * b;
-	}
-	env.sub = function(a,b){
-		return a - b;
-	}
-	
-	return env;
-}
-
-
-var command_text = '(assign continue (label fact-done)) ;\
-fact-loop;\
-   (test (op equal) (reg n) (const 1));\
-   (branch (label base-case));\
-   (save continue);\
-   (save n);\
-   (assign n (op sub) (reg n) (const 1));\
-   (assign continue (label after-fact));\
-   (goto (label fact-loop));\
-after-fact;\
-   (restore n);\
-   (restore continue);\
-   (assign val (op mul) (reg n) (reg val));\
-   (goto (reg continue)) ;\
-base-case;\
-   (assign val (const 1)) ;\
-   (goto (reg continue));\
-fact-done;';
-
-
-function test_machine(){
-	var regs = ['val','n','continue'];	
-	var controller_text=[];	
-     var ss = command_text.split(';');
-    for(var i=0;i< ss.length;i++){
-		controller_text.push(ss[i]);
-	}
-	var m =  make_machine(regs);	
-	
-	console.log('machine setup!');
-
-    
-	asseble(controller_text,m,setup());
-	
-	m.set_reg('val',1);
-	m.set_reg('n',6);
-	m.start();
-	
-	console.log('Machine finish!');
-	console.log('result  is ' + m.get_reg('val'));
-}
-
-
-
 function test_evaluator(){	
 	// write machine code here , and load into controller_text	
 	var command_text= machine_code;		
@@ -755,7 +683,7 @@ function test_evaluator(){
 	}
 	// setup machine
 	var regs = ['val','continue','exp','env','proc','argl','unev'];	
-	//var regs =['val','b','n','continue','product','counter','t'];
+
 	var m =  make_machine(regs);	
     
 	// assemble machine with libs and machine code
@@ -763,17 +691,21 @@ function test_evaluator(){
 	// env has frames list.  new frame in front, like stack
 	// frame is key/value pairs.  implement by object
 	var global_env = [];
+	global_env[0] = {};
 	m.set_reg('env',global_env);
 	var done ={};
 	done.type = 'label';
 	done.name = 'done';
 	m.set_reg('continue',done);
-	var test_exp = {};
-	test_exp.type = 'quote';
-	test_exp.value = 'hello world';	
-	m.set_reg('exp',test_exp);
-	m.start();
+	var test_exp = m.libs.gen('(define a 78)');
 	
+	m.set_reg('exp',test_exp);
+	//var www = m.libs.gen('\'abc');
+	m.start();
+	test_exp = m.libs.gen('a');
+	m.set_reg('exp',test_exp);
+	m.pcindex = 0;   // reset pcindex  to the beginning  index 0
+	m.start();
 	console.log('Machine finish!');
 	console.log('result  is ' + m.get_reg('val'));
 }
