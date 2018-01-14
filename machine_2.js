@@ -690,22 +690,28 @@ function test_evaluator(){
 	asseble(controller_text,m,libs);
 	// env has frames list.  new frame in front, like stack
 	// frame is key/value pairs.  implement by object
-	var global_env = [];
-	global_env[0] = {};
+	var global_env = [];	
+	var prims = setup_global_environment();
+	// convert  to procedure  object
+	Object.keys(prims).forEach(function(funcName){
+		 var obj ={};
+		 obj.type = 'prim';
+		 obj.func = prims[funcName];
+		 prims[funcName] = obj;
+	});
+	global_env[0] = prims;
+	
 	m.set_reg('env',global_env);
 	var done ={};
 	done.type = 'label';
 	done.name = 'done';
 	m.set_reg('continue',done);
-	var test_exp = m.libs.gen('(define a 78)');
+	var test_exp = m.libs.gen('(add 3 4)');
 	
 	m.set_reg('exp',test_exp);
-	//var www = m.libs.gen('\'abc');
 	m.start();
-	test_exp = m.libs.gen('a');
-	m.set_reg('exp',test_exp);
 	m.pcindex = 0;   // reset pcindex  to the beginning  index 0
-	m.start();
+
 	console.log('Machine finish!');
 	console.log('result  is ' + m.get_reg('val'));
 }
