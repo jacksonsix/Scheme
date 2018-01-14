@@ -1,7 +1,8 @@
 // evaluator
 
 //libs for evaluator
-function setup(){
+//prim procedures in environment
+function setup_global_environment(){
 	var env = {};
 	env.lessthan = function(left,right){
 		return left < right;
@@ -13,7 +14,7 @@ function setup(){
 		return left > right;
 	}
 	env.add = function(left,right){
-		return left + right;
+		return parseFloat(left) + parseFloat(right);
 	}
 	env.rem = function(a,b){
 		return a % b;
@@ -23,8 +24,7 @@ function setup(){
 	}
 	env.sub = function(a,b){
 		return a - b;
-	}
-	
+	}	
 	return env;
 }
 
@@ -161,13 +161,7 @@ env.gen  = function (info){
 					 obj.type = 'lambda';
 					 obj.parameters = proc.pop();
 					 obj.body = proc.pop();
-					 break;
-				 case 'application':
-					 obj.type ='application';
-					 obj.operator = proc.pop();
-					 obj.oprands = proc.pop();
-					 obj.env = proc.pop();
-					 break;
+					 break;				 
 				 case 'define':
 					 obj.type ='definition';
 					 obj.variable = proc.pop();
@@ -182,7 +176,14 @@ env.gen  = function (info){
 					 obj.type ='quote';
 					 obj.text = proc.pop();
 					 break;		 
-			   default:
+			   default:   // default as application
+			         obj.type ='application';
+					 obj.operator = op;
+					 obj.oprands = [];
+					 while(proc.length>0){
+						 var p = proc.pop();
+						 obj.oprands.push(applyv(p));
+					 }						
 					break;	   
 			   }  
 		  }	   
@@ -226,7 +227,7 @@ function setup_eval(){
 		return exp.type ==='begin';
 	}	
 	env.application00 = function(exp){
-		return exp.type ==='application';
+		return exp.type ==='application';		
 	}	
 	env.self_value = function(exp){
 		return exp.value;
@@ -234,18 +235,26 @@ function setup_eval(){
 	env.quote_text = function(exp){
 		return exp.text;
 	}
-	env.lookup_var_env = function(variable,env){
-		// lookup variable in the env object.
+	
+	function search_variable(variable,env){
 		for(var i=0; i< env.length;i++){
 			var frame = env[i];    
 			var keys = Object.keys(frame);
 			for(var j=0; j< keys.length;j++){
-				if(keys[j] === variable.value){
-					return frame[variable.value];
+				if(keys[j] === variable){
+					return frame;
 				}
 			}
 		}
-		return 'undefined';
+		return null;
+	}
+	env.lookup_var_env = function(variable,env){		
+		var frame = search_variable(variable.value,env);
+		if(frame != null){
+			return frame[variable.value]
+		}else{
+			return 'undefined';
+		}		
 	}
 	env.define_var = function(exp){
 		return exp.variable;
@@ -258,6 +267,126 @@ function setup_eval(){
 		frame[variable] = val;
 		return  'ok';
 	}
+	env.assign_var = function(exp){
+		return exp.variable;
+	}
+	env.assign_value = function(exp){
+		return exp.value;
+	}
+	env.set_var_value = function(variable,val,env){
+		var frame = search_variable(variable,env);		
+		frame[variable] = val;
+		return  'ok';
+	}
+	env.begin_actions = function(exp){
+		return exp.exps;
+		
+	}
+	env.first_sequence = function(sequence){
+		if(sequence.length>0){
+			return sequence[0];
+		}else{
+			return null;
+		}
+	}
+	env.is_last_exp = function(sequence){
+		return sequence.length == 1;
+	}
+	env.rest_sequence = function(sequence){
+		if(sequence.length >1){
+			return sequence.slice(1);
+		}else{
+			return null;
+		}
+	}
+	env.lambda_parameters = function(exp){
+		return exp.parameters;
+	}
+	env.lambda_body  = function(exp){
+		return exp.body;
+	}
+	env.make_procedure = function(paras,body,env){
+		var procedure = {};
+		procedure.parameters = paras;
+		procedure.body = body;
+		procedure.env = env;
+		procedure.type = 'procedure';
+		return procedure;
+	}
+	env.procedure_parameters = function(procedure){
+		return procedure.parameters;
+	}
+	env.procedure_body = function(procedure){
+		return procedure.body;
+	}
+	env.procedure_env = function(procedure){
+		return procedure.env;
+	}
+	env.is_no_operands = function(sequence){
+		if(sequence == null || sequence.length<1){
+			return true;
+		}
+		return false;
+	}
+	env.empty_list = function(){
+		var s = [];
+		return s;
+	}
+	env.extend_env = function(parameters,argl,env){
+		var newframe = {};
+		for(var i=0;i< parameters.length;i++){
+			var para = parameters[i];
+			newframe[para] = argl[i];
+		}
+		env.unshift(newframe);
+	}
+	env.adjoin_arg = function(val, argl){
+		argl.push(val);
+		return argl;
+	}
+	function inEnvLibs(name,env){
+		var keys = Object.keys(env);
+		for(var i=0;i< keyslength;i++){
+			var proc = keys[i];
+			if(proc === name) return true;
+		}
+		return false;
+	}
+	env.is_prim_procedure = function(proc){		
+		if(proc.type ==='prim'){
+			return true;
+		}else{
+			return false;
+		}		
+	}
+	env.is_compound_procedure = function(proc){
+		return !is_prim_procedure(proc);
+	}
+	env.apply_prim_procedure = function(proc,argl){
+		// test if the proc is a function name only as string		
+		return proc.func.apply(this, argl);		
+	}
+	env.app_oprands = function(exp){
+		return exp.oprands;
+	}
+	env.app_operator = function(exp){
+		
+		// if operator is lambda expression. it will go eval . but if that is 
+		// a name for prim, or compound procedrue defined before?
+		// transform in lambda format
+		//var proc = {};
+		//proc.type = 'lambda';
+		//proc.name = exp.operator;
+		//proc.note = 'defined';
+		//return  proc;
+		
+		// as variable, lookup in environment 
+		var o = {};
+		o.type='variable';
+		o.value = exp.operator;
+		return  o;   // this is a procedure name as string
+	}
+	
 	return env;
 }
 
@@ -378,38 +507,38 @@ ev_app_did_operator;\
 (restore env);\
 (assign argl (op empty_list));\
 (assign proc (reg val));\
-(test (op no_operands00) (reg unev));\
+(test (op is_no_operands) (reg unev));\
 (branch (label apply_dispatch));\
 (save proc);\
 ev_app_oprand_loop;\
 (save argl);\
-(assign exp (op first_oprand) (reg unev));\
-(test (op last_oprand00) (reg unev));\
+(assign exp (op first_sequence) (reg unev));\
+(test (op is_last_exp) (reg unev));\
 (branch (label ev_app_last_arg));\
 (save env);\
 (save unev);\
 (assign continue (label ev_app_accumulate));\
-(goto (label ev_dispatch));\
+(goto (label eval_dispatch));\
 ev_app_accumulate;\
 (restore unev);\
 (restore env);\
 (restore argl);\
 (assign argl (op adjoin_arg) (reg val) (reg argl));\
-(assign unev (op rest_operands) (reg unev));\
+(assign unev (op rest_sequence) (reg unev));\
 (goto (label ev_app_oprand_loop));\
 ev_app_last_arg;\
 (assign continue (label ev_app_accum_last_arg));\
-(goto (label ev_dispatch);\
+(goto (label eval_dispatch));\
 ev_app_accum_last_arg;\
 (restore argl);\
 (assign argl (op adjoin_arg) (reg val) (reg argl));\
 (restore proc);\
 (goto (label apply_dispatch));\
 apply_dispatch;\
-(test (op prim_procedure00) (reg proc));\
-(branch (label apply_prim));\
-(test (op compound_procedure00) (reg proc));\
-(branch (label apply_compound));\
+(test (op is_prim_procedure) (reg proc));\
+(branch (label prim_procedure));\
+(test (op is_compound_procedure) (reg proc));\
+(branch (label compound_procedure));\
 (goto (label unknown_procedure));\
 prim_procedure;\
 (assign val (op apply_prim_procedure) (reg proc) (reg argl));\
@@ -418,7 +547,7 @@ prim_procedure;\
 compound_procedure;\
 (assign unev (op procedure_parameters) (reg proc));\
 (assign env (op procedure_env) (reg proc));\
-(assign env (op extend_env) (reg unev) (reg argl) (reg proc));\
+(assign env (op extend_env) (reg unev) (reg argl) (reg env));\
 (assign unev (op procedure_body) (reg proc));\
 (goto (label ev_sequence));\
 ev_begin;\
@@ -427,7 +556,7 @@ ev_begin;\
 (goto (label ev_sequence));\
 ev_sequence;\
 (assign exp (op first_sequence) (reg unev));\
-(test (op last_exp00) (reg unev));\
+(test (op is_last_exp) (reg unev));\
 (branch (label ev_sequence_last));\
 (save unev);\
 (save env);\
@@ -455,10 +584,10 @@ ev_if_decide;\
 (test (op true00) (reg val));\
 (branch (label ev_if_conseq);\
 (assign exp (op if_alt) (reg exp));\
-(goto (label ev_dispatch));\
+(goto (label eval_dispatch));\
 ev_if_conseq;\
 (assign exp (op if_conseq) (reg exp));\
-(goto (label ev_dispatch));\
+(goto (label eval_dispatch));\
 ev_assign;\
 (assign unev (op assign_var) (reg exp));\
 (save unev);\
@@ -471,7 +600,7 @@ assign_continue;\
 (restore continue);\
 (restore env);\
 (restore unev);\
-(perform (op set_var_value!) (reg unev) (reg val) (reg env));\
+(perform (op set_var_value) (reg unev) (reg val) (reg env));\
 (assign val (const ok));\
 (goto (reg continue));\
 ev_define;\
