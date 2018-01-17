@@ -32,20 +32,19 @@ function setup_global_environment(){
 function setup_parser(){
 var env = {};
 env.read_exp_text = 
-// parser to  instruction object
-function read_exp_text(scheme_text){
-		
-	var commands = [];
-	// assume each command on each line;
-	var line ='';
-	for(var i=0; i< scheme_text.length;i++){
-		line = scheme_text[i];
-		var inst =  gen(line);
-		inst.cmdtext = line;
-		commands.push(inst);		
+    // parser to  instruction object
+	function read_exp_text(scheme_text){			
+		var commands = [];
+		// assume each command on each line;
+		var line ='';
+		for(var i=0; i< scheme_text.length;i++){
+			line = scheme_text[i];
+			var inst =  gen(line);
+			inst.cmdtext = line;
+			commands.push(inst);		
+		}
+		return commands;	
 	}
-	return commands;	
-}
 
 // generate proc
 env.gen  = function (info){
@@ -159,8 +158,22 @@ env.gen  = function (info){
 					 break;		 
 				 case 'lambda':
 					 obj.type = 'lambda';
-					 obj.parameters = proc.pop();
-					 obj.body = proc.pop();
+					 var tmp = proc.pop();
+					 if(tmp.type ==='application'){
+						 var ta =[];
+						 ta.push(tmp.operator);
+						 while(tmp.oprands.length>0){
+							 ta.push(tmp.oprands.pop());
+						 }
+						obj.parameters = ta;
+					 }else{
+						obj.parameters = proc.pop();
+					 }					 
+					 obj.body =[];
+					 while(proc.length>0){
+						 obj.body.push(proc.pop());
+					 }					 
+					 // for each expression
 					 break;				 
 				 case 'define':
 					 obj.type ='definition';
@@ -176,7 +189,7 @@ env.gen  = function (info){
 					 obj.type ='quote';
 					 obj.text = proc.pop();
 					 break;		 
-			   default:   // default as application
+			   default:   // default as application (operator) (operator operands) , but parameters (para1)  or (para1,para2) 
 			         obj.type ='application';
 					 obj.operator = op;
 					 obj.oprands = [];
@@ -186,8 +199,7 @@ env.gen  = function (info){
 					 }						
 					break;	   
 			   }  
-		  }	   
-		   
+		  }	
 		  return  obj; 	   	   
 	}
 	
@@ -283,6 +295,7 @@ function setup_eval(){
 		
 	}
 	env.first_sequence = function(sequence){
+		// expression should be evaluate to object
 		if(sequence.length>0){
 			return sequence[0];
 		}else{
@@ -339,6 +352,7 @@ function setup_eval(){
 			newframe[para] = argl[i];
 		}
 		env.unshift(newframe);
+		return env;
 	}
 	env.adjoin_arg = function(val, argl){
 		argl.push(val);
@@ -360,7 +374,11 @@ function setup_eval(){
 		}		
 	}
 	env.is_compound_procedure = function(proc){
-		return !is_prim_procedure(proc);
+		if(proc.type ==='prim'){
+			return false;
+		}else{
+			return true;
+		}	
 	}
 	env.apply_prim_procedure = function(proc,argl){
 		// test if the proc is a function name only as string		
@@ -369,8 +387,7 @@ function setup_eval(){
 	env.app_oprands = function(exp){
 		return exp.oprands;
 	}
-	env.app_operator = function(exp){
-		
+	env.app_operator = function(exp){		
 		// if operator is lambda expression. it will go eval . but if that is 
 		// a name for prim, or compound procedrue defined before?
 		// transform in lambda format
@@ -395,70 +412,6 @@ function setup_eval(){
 var prims = setup_eval();
 var parser = setup_parser();
 var libs = Object.assign({},parser,prims);
-var machine_code1 = 
-'(assign n (const 4));\
-(assign b (const 7));\
-(assign continue (label done));\
-expt_begin;\
-(test (op equal) (reg n) (const 0));\
-(branch (label base_case));\
-(save n);\
-(save continue);\
-(assign n (op sub) (reg n) (const 1));\
-(assign continue (label after_expt));\
-(goto (label expt_begin));\
-base_case;\
-(assign val (const 1));\
-(goto (reg continue));\
-after_expt;\
-(restore continue);\
-(restore n);\
-(assign val (op mul) (reg val) (reg b));\
-(goto (reg continue));\
-done';
-
-var machine_code2=
-'begin;\
-(assign product (const 1));\
-(assign n (const 4));\
-(assign  b (const 7));\
-(assign counter (reg n));\
-expt_iter;\
-(test (op equal) (reg counter) (const 0));\
-(branch (label done));\
-(assign counter (op sub) (reg counter) (const 1));\
-(assign  product (op mul) (reg b) (reg product));\
-(goto (label expt_iter));\
-done';
-
-var machine_code3=
-'(assign n (const 6));\
-(assign continue (label done));\
-fib_begin;\
-(test (op lessthan) (reg n) (const 2));\
-(branch (label base_case));\
-(save continue);\
-(assign continue (label para1_done));\
-(save n);\
-(assign n (op sub) (reg n) (const 1));\
-(goto (label fib_begin));\
-para1_done;\
-(restore n);\
-(save val);\
-(assign n (op sub) (reg n) (const 2));\
-(assign continue (label para2_done));\
-(goto (label fib_begin));\
-para2_done;\
-(assign t (reg val));\
-(restore val);\
-(restore continue);\
-(assign val (op add) (reg t) (reg val));\
-(goto (reg continue));\
-base_case;\
-(assign val (reg n));\
-(goto (reg continue));\
-done;\
-';
 
 var machine_code =
 'eval_dispatch;\
