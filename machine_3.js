@@ -171,7 +171,16 @@ env.gen  = function (info){
 					 }					 
 					 obj.body =[];
 					 while(proc.length>0){
-						 obj.body.push(proc.pop());
+						 // check  exception: if exists  a string , as a single expression 
+						 var exp = proc.pop();
+						 if(typeof(exp) ==='string'){
+							 var  v ={};
+							 v.type='variable';
+							 v.value = exp;
+							 obj.body.push(v);
+						 }else{
+							  obj.body.push(exp);
+						 }						
 					 }					 
 					 // for each expression
 					 break;				 
