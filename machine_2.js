@@ -219,8 +219,7 @@ function gen(info){
 				
 				if(token ==='('){
 				   // push to stack
-				   // the first token is operator
-				 
+				   // the first token is operator				 
 				   stack.push(token);
 				   
 				} else if(token===')'){
@@ -706,12 +705,14 @@ function test_evaluator(){
 	done.type = 'label';
 	done.name = 'done';
 	m.set_reg('continue',done);
-	var test_exp = m.libs.gen('(add 3 4)');
+	var test_exp = m.libs.gen('(define id (lambda (x)  x))');
 	
 	m.set_reg('exp',test_exp);
 	m.start();
 	m.pcindex = 0;   // reset pcindex  to the beginning  index 0
-
+    test_exp = m.libs.gen('(id 4)');
+	m.set_reg('exp',test_exp);
+	m.start();
 	console.log('Machine finish!');
 	console.log('result  is ' + m.get_reg('val'));
 }
