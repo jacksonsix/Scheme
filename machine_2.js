@@ -705,7 +705,7 @@ function test_evaluator(){
 	done.type = 'label';
 	done.name = 'done';
 	m.set_reg('continue',done);
-	var test_exp = m.libs.gen('(define id (lambda (x)  x))');
+	var test_exp = m.libs.gen('(define (id x) (add 3 4) x)');
 	
 	m.set_reg('exp',test_exp);
 	m.start();
