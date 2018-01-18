@@ -200,7 +200,7 @@ env.gen  = function (info){
 					 break;		 
 			   default:   // default as application (operator) (operator operands) , but parameters (para1)  or (para1,para2) 
 			         obj.type ='application';
-					 obj.operator = op;
+					 obj.operator = applyv(op);
 					 obj.oprands = [];
 					 while(proc.length>0){
 						 var p = proc.pop();
@@ -358,7 +358,7 @@ function setup_eval(){
 		var newframe = {};
 		for(var i=0;i< parameters.length;i++){
 			var para = parameters[i];
-			newframe[para] = argl[i];
+			newframe[para.value] = argl[i];
 		}
 		env.unshift(newframe);
 		return env;
@@ -396,21 +396,8 @@ function setup_eval(){
 	env.app_oprands = function(exp){
 		return exp.oprands;
 	}
-	env.app_operator = function(exp){		
-		// if operator is lambda expression. it will go eval . but if that is 
-		// a name for prim, or compound procedrue defined before?
-		// transform in lambda format
-		//var proc = {};
-		//proc.type = 'lambda';
-		//proc.name = exp.operator;
-		//proc.note = 'defined';
-		//return  proc;
-		
-		// as variable, lookup in environment 
-		var o = {};
-		o.type='variable';
-		o.value = exp.operator;
-		return  o;   // this is a procedure name as string
+	env.app_operator = function(exp){	
+		return  exp.operator;
 	}
 	
 	return env;
