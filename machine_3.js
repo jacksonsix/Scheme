@@ -187,12 +187,47 @@ env.gen  = function (info){
 				 case 'define':
 					 obj.type ='definition';
 					 obj.variable = proc.pop();
-					 obj.value = applyv(proc.pop());
+					 // test if variable part is application object, which means it is a definition of procedure
+					 if(obj.variable.type && obj.variable.type ==='application'){
+						 var tmp = obj.variable;
+						 obj.variable = tmp.operator;
+						 var convert ={};
+						 convert.type ='lambda';
+						 convert.parameters = [];
+						 while(tmp.oprands.length>0){
+							 convert.parameters.push(tmp.oprands.pop());
+						 }
+						 convert.body = [];
+						 while(proc.length>0){
+							 convert.body.push(applyv(proc.pop()));
+						 }
+						 obj.value = applyv(convert);
+						 
+					 }else{
+						 obj.value = applyv(proc.pop());
+					 }					 
 					 break;
 				 case 'set!':
 					 obj.type = 'assign';
-					 obj.variable = proc.pop();
-					 obj.value = applyv(proc.pop());
+					 // test if variable part is application object, which means it is a definition of procedure
+					 if(obj.variable.type && obj.variable.type ==='application'){
+						 var tmp = obj.variable;
+						 obj.variable = tmp.operator;
+						 var convert ={};
+						 convert.type ='lambda';
+						 convert.parameters = [];
+						 while(tmp.oprands.length>0){
+							 convert.parameters.push(tmp.oprands.pop());
+						 }
+						 convert.body = [];
+						 while(proc.length>0){
+							 convert.body.push(applyv(proc.pop()));
+						 }
+						 obj.value = applyv(convert);
+						 
+					 }else{
+						 obj.value = applyv(proc.pop());
+					 }	
 					 break;
 				 case '\'':
 					 obj.type ='quote';
@@ -285,7 +320,7 @@ function setup_eval(){
 	}
 	env.define_variable = function(variable,val,env){
 		var frame = env[0];		
-		frame[variable] = val;
+		frame[variable.value] = val;
 		return  'ok';
 	}
 	env.assign_var = function(exp){
