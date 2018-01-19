@@ -28,6 +28,35 @@ function setup_global_environment(){
 	return env;
 }
 
+function jsmapping(shortName){
+	var longName=shortName;
+	switch(shortName){
+		case '+':
+		longName='add';
+		break;
+		case '-':
+		longName='sub';
+		break;
+		case '*':
+		longName='mul';
+		break;
+		case '%':
+		longName='rem';
+		break;
+		case '<':
+		longName='lessthan';
+		break;
+		case '>':
+		longName='bigthan';
+		break;	
+		case '=':
+		longName='equal';
+		break;			
+		default:
+		break;
+	}
+	return longName;
+}
 
 function setup_parser(){
 var env = {};
@@ -235,7 +264,7 @@ env.gen  = function (info){
 					 break;		 
 			   default:   // default as application (operator) (operator operands) , but parameters (para1)  or (para1,para2) 
 			         obj.type ='application';
-					 obj.operator = applyv(op);
+					 obj.operator = applyv(jsmapping(op));
 					 obj.oprands = [];
 					 while(proc.length>0){
 						 var p = proc.pop();
