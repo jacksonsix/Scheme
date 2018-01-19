@@ -464,6 +464,20 @@ function setup_eval(){
 		return  exp.operator;
 	}
 	
+	env.if_conseq = function(exp){
+		return exp.conseq;
+	}
+	env.if_pred = function(exp){
+		return exp.pred;
+	}
+	env.if_alt = function(exp){
+		return exp.alt;
+	}
+	
+	env.true00 = function(val){
+		return val !== 'false';
+	}
+	
 	return env;
 }
 
@@ -595,7 +609,7 @@ ev_if_decide;\
 (restore env);\
 (restore exp);\
 (test (op true00) (reg val));\
-(branch (label ev_if_conseq);\
+(branch (label ev_if_conseq));\
 (assign exp (op if_alt) (reg exp));\
 (goto (label eval_dispatch));\
 ev_if_conseq;\
