@@ -25,6 +25,15 @@ function setup_global_environment(){
 	env.sub = function(a,b){
 		return a - b;
 	}	
+	// convert  to procedure  object
+	Object.keys(env).forEach(function(funcName){
+		 var obj ={};
+		 obj.type = 'prim';
+		 obj.func = env[funcName];
+		 env[funcName] = obj;
+	});
+	env.false = false;  // false as vaiable , its value is false
+	env.true = true;
 	return env;
 }
 
@@ -192,7 +201,7 @@ env.gen  = function (info){
 						 var ta =[];
 						 ta.push(tmp.operator);
 						 while(tmp.oprands.length>0){
-							 ta.push(tmp.oprands.pop());
+							 ta.unshift(tmp.oprands.pop());  // keep the same sequence
 						 }
 						obj.parameters = ta;
 					 }else{
@@ -224,11 +233,11 @@ env.gen  = function (info){
 						 convert.type ='lambda';
 						 convert.parameters = [];
 						 while(tmp.oprands.length>0){
-							 convert.parameters.push(tmp.oprands.pop());
+							 convert.parameters.unshift(tmp.oprands.pop()); // keep the same sequence
 						 }
 						 convert.body = [];
 						 while(proc.length>0){
-							 convert.body.push(applyv(proc.pop()));
+							 convert.body.unshift(applyv(proc.pop()));  // keep the same sequence
 						 }
 						 obj.value = applyv(convert);
 						 
@@ -246,11 +255,11 @@ env.gen  = function (info){
 						 convert.type ='lambda';
 						 convert.parameters = [];
 						 while(tmp.oprands.length>0){
-							 convert.parameters.push(tmp.oprands.pop());
+							 convert.parameters.unshift(tmp.oprands.pop());  // keep the same sequence
 						 }
 						 convert.body = [];
 						 while(proc.length>0){
-							 convert.body.push(applyv(proc.pop()));
+							 convert.body.unshift(applyv(proc.pop())); // keep the same sequence
 						 }
 						 obj.value = applyv(convert);
 						 
@@ -475,7 +484,7 @@ function setup_eval(){
 	}
 	
 	env.true00 = function(val){
-		return val !== 'false';
+		return val !== false;
 	}
 	
 	return env;
