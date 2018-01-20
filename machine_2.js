@@ -691,13 +691,6 @@ function test_evaluator(){
 	// frame is key/value pairs.  implement by object
 	var global_env = [];	
 	var prims = setup_global_environment();
-	// convert  to procedure  object
-	Object.keys(prims).forEach(function(funcName){
-		 var obj ={};
-		 obj.type = 'prim';
-		 obj.func = prims[funcName];
-		 prims[funcName] = obj;
-	});
 	global_env[0] = prims;
 	
 	m.set_reg('env',global_env);
@@ -705,12 +698,12 @@ function test_evaluator(){
 	done.type = 'label';
 	done.name = 'done';
 	m.set_reg('continue',done);
-	var test_exp = m.libs.gen('(define (id x) (add 3 4) x)');
+	var test_exp = m.libs.gen('(define (dou x n)  (if (= n 1) x  (* x (dou x (- n 1)))))');
 	
 	m.set_reg('exp',test_exp);
 	m.start();
 	m.pcindex = 0;   // reset pcindex  to the beginning  index 0
-    test_exp = m.libs.gen('(id 4)');
+    test_exp = m.libs.gen('(dou  3 2)');
 	m.set_reg('exp',test_exp);
 	m.start();
 	console.log('Machine finish!');
