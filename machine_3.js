@@ -171,7 +171,7 @@ env.gen  = function (info){
 			  // expression has only 1 part. ,  self_eval, variable.
 			  if(isNumeric(proc)  ){
 				  obj.type = 'self';
-				  obj.value = proc;
+				  obj.value = parseFloat(proc);
 			  }else{
 				  obj.type = 'variable';
 				  obj.value = proc;
@@ -359,6 +359,9 @@ function setup_eval(){
 	env.define_variable = function(variable,val,env){
 		var frame = env[0];		
 		frame[variable.value] = val;
+		if(val.type ==='procedure'){  // modify  procedure env
+			val.env[0] = frame;
+		}
 		return  'ok';
 	}
 	env.assign_var = function(exp){
@@ -404,7 +407,18 @@ function setup_eval(){
 		var procedure = {};
 		procedure.parameters = paras;
 		procedure.body = body;
-		procedure.env = env;
+		//procedure.env = env;  // this will create cycle. break it.
+		//procedure.env = JSON.stringify(env);   // stringfy does not work for function
+		var copy = []; // copy each frame
+		for(var i=0;i<env.length;i++){
+			var frame = env[i];
+			var cf = {};
+			Object.keys(frame).forEach(function(key){
+				cf[key] = frame[key];				
+			});
+			copy.push(cf);
+		}
+		procedure.env = copy;
 		procedure.type = 'procedure';
 		return procedure;
 	}
@@ -414,7 +428,7 @@ function setup_eval(){
 	env.procedure_body = function(procedure){
 		return procedure.body;
 	}
-	env.procedure_env = function(procedure){
+	env.procedure_env = function(procedure){		
 		return procedure.env;
 	}
 	env.is_no_operands = function(sequence){
