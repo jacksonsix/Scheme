@@ -1,4 +1,80 @@
 //machine
+
+//import objToString
+//unwrap object till n layer.
+function counter(){
+	var index = 0;
+	return function(){
+		return index++;
+	}
+}
+var count = counter();
+function trace(data){
+	console.log(data);
+	tohtml(0,data);
+}
+
+ function tohtml(index,cmd,reg){	
+	var a = document.createElement('li');
+	a.innerHTML=index +':  '+ cmd;
+	document.getElementById('log').append(a);	
+	
+	//var b = document.createElement('li');
+	//b.innerHTML = count() + reg;
+	//document.getElementById('regs').append(b);	
+ }
+ var trace_options = {
+	 command:true,
+	 regs:false,
+	 stack:false,
+	 reg_filter:['exp','val']
+ };
+ 
+function objToString(obj,n){	
+	var type = typeof(obj);
+	var strValue ='';
+	if(type =='object'){
+		if(Array.isArray(obj)){
+				strValue += '[ ';
+				strValue += allKeys(obj, n);
+				strValue += ' ]';	
+			
+		}else{
+				strValue +=  '{ ';
+				strValue += allKeys(obj, n);
+				strValue +=  ' }';				
+		}
+		
+	}else if(type ==='function'){
+		strValue = 'user_function';		
+	} 
+	else{
+		strValue = obj;
+	}
+	return strValue;
+}
+
+function allKeys(parent,n){
+	if(parent == null) return '';
+	
+	var keys = Object.keys(parent);
+	var elements='';
+	keys.forEach(function(key){
+		var ele = parent[key];
+		if(ele!=null){
+			if(n > 6){ 
+			     return 'cutoff';
+			}else{				
+				var s = objToString(key,n+1) +':' +objToString(parent[key], n+1) +' , ';
+				elements += s;
+			}
+                      			
+		}
+	});
+	elements = elements.substring(0, elements.length -3);
+	return elements;
+}
+//
 function make_machine(reg_names){
 	var _machine = new Machine_base();
 	// augment machine with memory
@@ -24,6 +100,7 @@ function Machine_base(){
   this.trace = true;
   this.maxStack = 0;
   this.numPush = 0;
+  this.debugstack = [];
   
   this.get_reg = function get_reg(reg){	 
 	  return this.registers[reg];
@@ -44,29 +121,24 @@ function Machine_base(){
 			var keys = Object.keys(this.registers);
 			for(var i = 0; i< keys.length;i++){
 				var key = keys[i];
+				//if(key==='env') continue;   //skip env
+				if(trace_options.reg_filter.indexOf(key) ==-1) continue;
 				var val = this.get_reg(key);
 				if(val !== 'unassigned'){
-					var  content =  this.get_reg(key);
-					if(typeof(content) ==='object'){
-						var  ckeys = Object.keys(content);
-						var serialized = '';
-						for(var j=0; j< ckeys.length;j++){
-							var ckey = ckeys[j];
-							serialized +=  ckey + ':' + content[ckey] + '|';
-						}
-						m += key +':' + serialized+'; ';
-					}else{
-						m += key +':' + content+'; ';
-					}
-					
+					var  content =  this.get_reg(key);					
+					m += '\n' +key +':' + objToString(content, 0) + ';';	
 				}				
 			}
 			var sta ='';
 			for(var i=0;i< this.stack.length;i++){
-				sta += ' |' + this.stack[i]  ;
+				sta += '\n' + objToString(this.stack[i],0)  + '--> ' + objToString(this.debugstack[i],0) ;
 			}
 			//print pc command
-			console.log(this.pc.cmdtext + '| '+m + 'stack' + sta);
+			var sn = count();
+			console.log(sn + 'command: ' + this.pc.cmdtext);			
+			console.log(sn+'registers:     ' +m);
+			console.log(sn+'     '+ 'stack' + sta);
+			tohtml( sn, this.pc.cmdtext,m);
 		}
 		if(this.stack.length > this.maxStack){
 			this.maxStack = this.stack.length;
@@ -435,6 +507,7 @@ function make_goto(inst,machine){
 		}
 		machine.pcindex = index;
 	    machine.pc = machine.ops[index];
+		trace('->' + staticname);
 	}
 }
 
@@ -471,6 +544,7 @@ function make_save(inst,machine){
 	return function(){
 		var val = machine.get_reg(inst.reg);
 		machine.stack.push(val);
+		machine.debugstack.push(inst);
 		machine.numPush++;
 		machine.advance_pc();
 	}
@@ -480,6 +554,7 @@ function make_restore(inst,machine){
 	var regName =  inst.reg;
 	return function(){
 		var old = machine.stack.pop();
+		machine.debugstack.pop();
 		machine.set_reg(regName,old);
 		machine.advance_pc();
 	}
@@ -698,12 +773,12 @@ function test_evaluator(){
 	done.type = 'label';
 	done.name = 'done';
 	m.set_reg('continue',done);
-	var test_exp = m.libs.gen('(define (dou x n)  (if (= n 1) x  (* x (dou x (- n 1)))))');
+	var test_exp = m.libs.gen('(define (fib n) (if (< n 2) n (+ (fib (- n 1)) (fib (- n 2)))))');
 	
 	m.set_reg('exp',test_exp);
 	m.start();
 	m.pcindex = 0;   // reset pcindex  to the beginning  index 0
-    test_exp = m.libs.gen('(dou  3 2)');
+    test_exp = m.libs.gen('(fib 2)');
 	m.set_reg('exp',test_exp);
 	m.start();
 	console.log('Machine finish!');
