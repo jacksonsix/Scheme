@@ -2,6 +2,45 @@
 
 //import objToString
 //unwrap object till n layer.
+function deepcopy(source){
+	var keeprecord = [];
+	var flagrecord =[];
+	var index = 0;
+	function copy(sr){
+		if(keeprecord.indexOf(sr) != -1){
+			return sr;
+		}
+		if(typeof(sr) !=='object'){
+			return sr;
+		}
+		var dst;
+		if(Array.isArray(sr)){
+			dst =[];
+			
+		}else{	
+	       dst ={};		
+		}	
+		
+		keeprecord.push(sr);
+		flagrecord.push('gray');	
+		var keys = Object.keys(sr);
+		keys.forEach(function(key){			
+			var ele = sr[key];
+			if(typeof(ele) ==='object'){
+				dst[key] = copy(ele);
+			}else{
+				dst[key] = ele;
+			}
+		});				
+		
+        var i = keeprecord.indexOf(sr);
+		flagrecord[i] = 'black';
+		return dst;
+	}
+	var nc = copy(source);
+	return nc;
+}
+
 function counter(){
 	var index = 0;
 	return function(){
@@ -14,9 +53,18 @@ function trace(data){
 	tohtml(0,data);
 }
 
- function tohtml(index,cmd,reg){	
+ function tohtml(index,cmd,reg,stack){	
+    var nreg='';
+	var nstack='';
+    cmd = cmd.replace('\n','</br>');
+	 if(typeof(reg) !=='undefined')
+	    nreg =reg.replace(/\n/g,'</br>');
+	 if(typeof(stack) !=='undefined')
+	    nstack =stack.replace(/\n/g,'</br>');
 	var a = document.createElement('li');
 	a.innerHTML=index +':  '+ cmd;
+	a.innerHTML += '</br>' +index + ':regs: ' + nreg;
+	a.innerHTML += '</br>' + index + ':stack: ' +nstack;
 	document.getElementById('log').append(a);	
 	
 	//var b = document.createElement('li');
@@ -138,7 +186,7 @@ function Machine_base(){
 			console.log(sn + 'command: ' + this.pc.cmdtext);			
 			console.log(sn+'registers:     ' +m);
 			console.log(sn+'     '+ 'stack' + sta);
-			tohtml( sn, this.pc.cmdtext,m);
+			tohtml( sn, this.pc.cmdtext,m,sta);
 		}
 		if(this.stack.length > this.maxStack){
 			this.maxStack = this.stack.length;
@@ -543,7 +591,9 @@ function make_save(inst,machine){
 	
 	return function(){
 		var val = machine.get_reg(inst.reg);
-		machine.stack.push(val);
+		//machine.stack.push(val);
+		var copy = deepcopy(val);
+		machine.stack.push(copy);
 		machine.debugstack.push(inst);
 		machine.numPush++;
 		machine.advance_pc();
@@ -778,7 +828,7 @@ function test_evaluator(){
 	m.set_reg('exp',test_exp);
 	m.start();
 	m.pcindex = 0;   // reset pcindex  to the beginning  index 0
-    test_exp = m.libs.gen('(fib 2)');
+    test_exp = m.libs.gen('(fib 1)');
 	m.set_reg('exp',test_exp);
 	m.start();
 	console.log('Machine finish!');
