@@ -683,15 +683,23 @@ function test_evaluator(){
 	done.type = 'label';
 	done.name = 'done';
 	m.set_reg('continue',done);
-	var test_exp = m.libs.gen('(define (fib n) (if (< n 2) n (+ (fib (- n 1)) (fib (- n 2)))))');
 	
-	m.set_reg('exp',test_exp);
-	m.start();
+	//var test_exp = m.libs.gen('(define (fib n) (if (< n 2) n (+ (fib (- n 1)) (fib (- n 2)))))');	
+	//m.set_reg('exp',test_exp);
+	//m.start();
+	
 	m.pcindex = 0;   // reset pcindex  to the beginning  index 0
     //test_exp = m.libs.gen('(fib 1)');
-	test_exp = m.libs.gen('(cons 1 2)');
+	test_exp = m.libs.gen('(define a 9)');
 	m.set_reg('exp',test_exp);
 	m.start();
+	
+	m.pcindex = 0;   // reset pcindex  to the beginning  index 0
+    //test_exp = m.libs.gen('(fib 1)');
+	test_exp = m.libs.gen('(set! a 5)');
+	m.set_reg('exp',test_exp);
+	m.start();
+	
 	console.log('Machine finish!');
 	console.log('result  is ' + m.get_reg('val'));
 }
