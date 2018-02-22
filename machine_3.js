@@ -63,6 +63,17 @@ function Memory(){
 		free++;
 		return index;
 	}
+	function inner(address){
+			var result ='';
+			if(address[0] ==='p'){
+				var i =  parseInt(address.slice(1));
+				result = '(' + inner(the_cars[i])  +',' + inner(the_cdrs[i])+')'; 
+			}else{
+				result = address;
+			}
+			return result;
+	}
+	this.display = inner;
 
 	function init_stack(){
 		the_stack = null;
@@ -155,6 +166,7 @@ function setup_global_environment(){
 	env.cdr = memory.cdr;
 	env.set_car = memory.set_car;
 	env.set_cdr = memory.set_cdr;
+	env.display = memory.display;
 	
 	env.lessthan = function(left,right){
 		return left < right;
@@ -394,11 +406,15 @@ env.gen  = function (info){
 						 obj.value = applyv(convert);
 						 
 					 }else{
-						 obj.value = applyv(proc.pop());
+						  obj.value = applyv(proc.pop());
+						  var t = obj.variable;
+                          obj.variable={};						 
+						  obj.variable.value = t;
 					 }					 
 					 break;
 				 case 'set!':
 					 obj.type = 'assign';
+					 obj.variable = proc.pop();
 					 // test if variable part is application object, which means it is a definition of procedure
 					 if(obj.variable.type && obj.variable.type ==='application'){
 						 var tmp = obj.variable;
@@ -416,7 +432,7 @@ env.gen  = function (info){
 						 obj.value = applyv(convert);
 						 
 					 }else{
-						 obj.value = applyv(proc.pop());
+						 obj.value = applyv(proc.pop());						
 					 }	
 					 break;
 				 case '\'':
