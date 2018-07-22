@@ -9,25 +9,25 @@
 		  
 		  
 
-(define (map proc sequence)
-	(accu (lambda (x y) (cons (proc x) (map proc (cdr sequence))))
-		  ()	
-	      sequence
-	))		
+(define (map op seq)
+   (accu (lambda(x y)
+           (cons (op x)
+                  y))
+         ()
+         seq))		
 	
 	
-(define (len sequence)
-  (accu  (lambda (x y) (+ (if (null? (car sequence)) 0 1) (len (cdr sequence))))
-         0
-		 sequence
-  ))
+(define (leng seq)
+  (accu (lambda(x y)
+          (+ 1 y))
+        0
+        seq))
   
   
 (define (append s1 s2)
   (accu  cons
-		 s1
-		 (cons (car s2) (append  s1 (cdr s2)))
-  ))  
+	 seq2
+	 seq1))  
   
   
   (define coff (list 1 3 0 5 0 1))
