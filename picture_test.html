@@ -1,0 +1,259 @@
+
+<html>
+<head>
+<style>
+table, th, td {
+   border: 1px solid black;
+}
+
+td{
+	height: 20px;
+	width: 20px;
+}
+</style>
+</head>
+<body>
+
+<button  onClick=testPromise()>click promise</button>
+<div id='log'> </div>
+<script src="advanced.js"></script>
+
+
+<table id="paint">
+</table>
+
+<script src="picture.js">
+
+</script>
+<script>
+ 
+initTable(dots.width,dots.height);
+var start ={};
+start.x =0.3;
+start.y = 0;
+var end ={};
+end.x = 0;
+end.y = 0.8;
+var end2 ={};
+end2.x = 0.8;
+end2.y = 0.8;
+
+
+var lines=[];
+lines.push(makeLine(start,end));
+lines.push(makeLine(start,end2));
+
+var withFrame = paintLinesinFrame(lines);
+
+var testf = makeFrame(makeVector(0,0), makeVector(1,0),makeVector(0,1));
+//withFrame(testf);
+
+//var testf1 = makeFrame(makeVector(0,1), subVect(makeVector(1,1), makeVector(0,1)),subVect(makeVector(0,0), makeVector(0,1)));
+//var map = frameMap(testf1);
+//paintTable(drawPoints(linetoPt(map(start),map(end))));
+var ups = upsidedown(withFrame);
+ups(testf);
+//withFrame(testf1);
+</script>
+
+</body>
+</html>
+------------------------------------------------------
+
+/// frame begins here
+function makeFrame(startv,v1,v2){
+  var frame ={};
+  frame.startv = startv;
+  frame.v1 = v1;
+  frame.v2 = v2;
+  return frame;
+}
+function orgin(frame){
+	return frame.startv;
+}
+function edge1(frame){
+	return frame.v1;
+}
+function edge2(frame){
+	return frame.v2;
+}
+// same as makePoint?
+function makeVector(x,y){
+  var v ={};
+  v.x = x;
+  v.y =y;
+  return v;
+}
+function xcor(v){
+  return v.x;
+}
+function ycor(v){
+	return v.y;
+}
+function makeLine(start,end){
+	var line ={};
+	line.start = start;
+	line.end = end;
+	return line;
+}
+function getstart(line){
+	return line.start;
+}
+function getend(line){
+	return line.end;
+}
+// vector calculation
+function addVect(v1,v2){
+  return makeVector((v1.x+v2.x), v1.y+ v2.y);
+}
+function subVect(v1,v2){
+  return addVect(v1,makeVector(-v2.x,-v2.y));
+  //return makeVector((v1.x - v2.x), v1.y - v2.y);
+}
+function scaleVect(k,v){
+	return makeVector(k*v.x, k* v.y);
+}
+//
+
+// from 0,10 physical to frame
+function frameMap(frame){
+  return function(v){
+		return  addVect(orgin(frame),
+								 addVect( scaleVect(xcor(v), edge1(frame)),
+										  scaleVect(ycor(v), edge2(frame))));
+  }; 
+}
+
+
+function paintLinesinFrame(lines){
+	return function(frame){
+	    let map = frameMap(frame);
+		lines.forEach(function(line){
+			let start = getstart(line);
+			let end = getend(line);
+			paintTable(drawPoints(linetoPt(map(start),map(end))));
+		});
+	}
+}
+
+// graphics system
+var dots ={};
+dots.width = 10;
+dots.height = 10;
+
+function linetoPt(pt1,pt2){
+    // rectify, scan by y
+	//dots,  grid , 
+	function checkAndAdd(pts,pt){
+		for(var i=0;i<pts.length;i++){
+			if(pts[i].y == pt.y){
+				pts[i].x = pt.x;
+				return;
+			} 
+		}
+		pts.push(pt);		
+	}
+	if(pt2.y < pt1.y){
+	   var t = pt1;
+	   pt1 = pt2;
+	   pt2 = t;
+	}
+	var direction =1;
+	if(pt2.x < pt1.x){
+		direction = -1;
+	}
+	var x1 = pt1.x;
+	var y1 = pt1.y;
+	var x2 = pt2.x;
+	var y2 = pt2.y;
+	
+	var len = Math.sqrt(Math.pow((x1 - x2),2) + Math.pow((y1-y2),2));
+	var cos = Math.abs(x1 - x2) / len;
+	var sin = Math.abs(y1 - y2) / len;
+	var pts = [];
+	var step = 0.5 /dots.width;
+	for(var i=0; i<len;){
+		var xx = x1 +  i * cos * direction;
+		var yy = y1 +  i * sin;
+		var npt ={};
+		npt.x = Math.floor(xx * dots.width);
+		npt.y = Math.floor(yy * dots.height);
+		if(npt.x == dots.width) { npt.x = dots.width -1;}
+		if(npt.y == dots.height) { npt.x = dots.height -1;}		
+		
+		checkAndAdd(pts,npt);
+		i += step;
+	}	
+	return pts;
+}
+// all non-zero points in a set 
+function drawPoints(pts){
+  var init = emptyData(dots.width,dots.height);
+  pts.forEach(function(pt){
+    init[pt.y][pt.x] = 1;
+  });
+  paintTable(init);
+}
+function initTable() {
+    var table = document.getElementById("paint");
+	for(var i =0;i<dots.height;i++){
+	     var row = table.insertRow(i);
+		 for(var j=0;j<dots.width;j++){
+			row.insertCell(j);
+		 }
+	}    
+}
+
+function emptyData(width,height){
+	var matrix = [];
+	for(var i=0;i<dots.height;i++){
+		matrix[i] = [];
+		for(var j=0;j<dots.width;j++){
+			matrix[i][j] = 0;
+		}
+	}
+	return matrix;
+}
+
+// picture operations base on frame, imagefn as abstract of image detail
+function transform(painter,orgin,edge1,edge2){
+	// non-zero data     
+    //return a new imagefn for further process
+	return function (frame){
+		let map = frameMap(frame);
+		let norgin = map(orgin);
+		return painter(makeFrame(norgin, 
+		                         subVect(map( edge1), norgin),
+								 subVect(map(edge2), norgin)));
+	}	
+}
+
+function upsidedown( painter){
+	return transform(painter,makeVector(0,1),makeVector(1,1),makeVector(0,0));
+}
+
+function painter(frame){
+	
+}
+
+
+//helper function
+
+
+function paintTable(data){
+  var table = document.getElementById("paint");
+  // data as matrix
+  if(data ==null) return;
+  for(var i =0;i<data.length;i++){
+    var row = data[i];
+	for(var j=0;j<row.length;j++){
+		var cell = row[j];
+		if(cell == 1){
+		  table.rows[i].cells[j].innerText='X';
+		}
+	}
+  }
+  
+}
+
+--------------
