@@ -214,5 +214,27 @@
 ;; multi-series
 ;; get combination of  power n. then add all these pairs up
 ;;
-(define (multi-series s1 s2)
-	(cons-stream)		   
+	   
+(define (mul-series s1 s2)
+   (cons-stream (* (stream-car s1) (stream-car s2))
+            (add-streams (scale-stream (stream-cdr s2) (stream-car s1))
+                          (mul-series  s2 (stream-cdr s1)))))
+  
+  
+;; define series as a stream a0 , a1,a2....
+(define (integrate-series stream)
+  (define (iter s count)
+     (cons-stream (* (stream-car s)(/ 1 (+ count 1)))
+          (iter (stream-cdr s) (+ 1 count))))
+  (iter stream 0))
+ 
+(define exp-series
+        (cons-stream 1 (integrate-series exp-series)))
+
+;; define sine, cosine together
+(define sine-series
+       (cons-stream 0  (integrate-series cosine-series)))
+
+(define cosine-series
+       (cons-stream 1  (integrate-series (stream-map - sine-series))))  
+  
