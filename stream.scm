@@ -245,3 +245,55 @@
 (define cosine-series
        (cons-stream 1  (integrate-series (stream-map - sine-series))))  
   
+
+;; mul-series
+(define (add-series s1 s2)
+   (add-streams s1 s2))
+
+;(define (mul-series s1 s2)
+;   (cons-stream (* (stream-car s1) (stream-car s2))
+;               (add-streams
+;                          (cons-stream 0 
+;                               (cons-stream 0
+;                                       (mul-series (stream-cdr s1) (stream-cdr s2)))) 
+;                          (add-streams  (cons-stream 0 (scale-stream (stream-cdr s2) (stream-car s1)))
+;                              (cons-stream 0 (scale-stream (stream-cdr s1) (stream-car s2)))))))
+
+
+;; what is the diff from previous??
+(define (mul-series s1 s2)
+  (cons-stream
+    (* (stream-car s1) (stream-car s2))
+    (add-streams (add-streams (scale-stream (stream-cdr s1) (stream-car s2))
+                              (scale-stream (stream-cdr s2) (stream-car s1)))
+                 (cons-stream 0 (mul-series (stream-cdr s1) (stream-cdr s2)))))) 
+
+(define (mul-series s1 s2)
+   (cons-stream (* (stream-car s1) (stream-car s2))
+            (add-streams (scale-stream (stream-cdr s2) (stream-car s1))
+                          (mul-series  s2 (stream-cdr s1)))))
+
+(define c (add-streams (mul-series sine-series sine-series)
+                             (mul-series cosine-series cosine-series)))
+
+(show-stream-n c 8)
+
+;; s, 1/s
+(define (invert-series s)
+   (define x 
+           (cons-stream 1 
+                       (stream-map - 
+                                   (mul-series  (stream-cdr s)
+                                                 x))))
+   x)
+
+(define w (invert-series exp-series))
+
+(define (div-series s1 s2)
+  (mul-series s1
+              (invert-series s2)))
+
+
+(define tangent (div-series sine-series cosine-series))
+ 
+(define test (partial-sum sine-series))  
