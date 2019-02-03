@@ -70,26 +70,86 @@
                    (triples intgers intgers intgers)))
 
 
+
+
 ;; userful order
+;; when merge, keep 2 copies if  weight equal!!
 (define (merge-weight s1 s2 weight)
    (cond ((< (weight (stream-car s1)) (weight (stream-car s2)))
           (cons-stream (stream-car s1)
                        (merge-weight  s2  (stream-cdr s1) weight)))
          ((> (weight (stream-car s1)) (weight (stream-car s2)))
           (cons-stream (stream-car s2)
-                       (merge-weight (stream-cdr s2) s1 )))
+                       (merge-weight (stream-cdr s2) s1 weight)))
          (else (cons-stream (stream-car s1)
-                             (merge-weight  (stream-cdr s2) (stream-cdr s1) weight)))))
+                        (cons-stream (stream-car s2)
+                              (merge-weight  (stream-cdr s2) (stream-cdr s1) weight))))))
 
-(define (weight  item)
-      (+ (car item) (cadr item)))
+;(define (weight  item)
+;      (+ (car item) (cadr item)))
  
+(define (weight1 item)
+     (+ (* 2 (car item)) (* 3 (cadr item)) (* 5 (car item) (cadr item))))
 
-(define (weight-pairs s1 s2 weight)
+
+(define (weight-pairs s1 s2 wfun)
      (cons-stream (concat (stream-car s1) (stream-car s2))
                   (merge-weight  (stream-map (lambda(x) (concat (stream-car s1) x))
                                            (stream-cdr s2))
-                                 (weight-pairs (stream-cdr s1) (stream-cdr s2) weight)
-                                 weight)))
+                                 (weight-pairs (stream-cdr s1) (stream-cdr s2) wfun)
+                                 wfun)))
+
+;;ram numbers
+
+
+(define (weight-ram  item)
+ ; (display item)
+ ; (display  (+ (expt (car item) 3) (expt (cadr item) 3)))
+ ; (display "\n")
+  (+ (expt (car item) 3) (expt (cadr item) 3)))
+
+
+(define ram-stream
+     (weight-pairs intgers intgers weight-ram)) 
+(define init 2)
+(define ram
+    (stream-filter (lambda(x)
+                      (let ((result (= init (weight-ram x))))
+                           (set! init (weight-ram x))                           
+                           result))                        
+                   ram-stream))
+
+
+;; better one for ram
+(define (checkr s)
+   (let ((a1 (stream-car s))
+         (a2 (stream-car (stream-cdr s))))
+     (if (= (weight-ram a1) (weight-ram a2))
+         (cons-stream a1
+             (cons-stream a2
+                 (checkr (stream-cdr s))))
+         (checkr (stream-cdr s)))))
+
+
+;;
+(define (sq-weight item)
+     (+ (square (car item)) (square (cadr item))))
+
+(define w3 
+    (weight-pairs intgers intgers sq-weight))
+
+
+(define (check3 s)
+   (let ((a1  (stream-car s))
+         (a2  (stream-car (stream-cdr s)))
+         (a3  (stream-car (stream-cdr (stream-cdr s)))))
+        (if (and (= (sq-weight a1) (sq-weight a2)) (= (sq-weight a1) (sq-weight a3)))
+              (cons-stream a1
+                 (cons-stream a2
+                     (cons-stream a3
+                         (check3 (stream-cdr s)))))
+            (check3 (stream-cdr s)))))
+
+(define c3 (check3 w3))
 
  
