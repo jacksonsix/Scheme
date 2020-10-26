@@ -179,3 +179,262 @@
 
    
       	       
+;; invert series
+
+(define (invert s)
+  (define x 
+    (cons-stream
+     1
+     (stream-map
+      (lambda(x) (- x))
+      (mul-series (stream-cdr s)
+		   x))))
+  x)
+
+
+(define (div-series s1 s2)
+  (if (= 0 (stream-car s2))
+      'error
+      (mul-series
+       s1
+       (invert s2))))
+
+
+;;; stream accelaration
+
+(define (transform s)
+  (let ((a0 (stream-ref s 0))
+	(a1 (stream-ref s 1))
+	(a2 (stream-ref s 2)))
+    (cons-stream
+     (- a2 (/ (square (- a2 a1))
+	      (+
+	       (- a0 (* 2 a1))
+	       a2)))
+     (transform (stream-cdr s)))))
+
+
+(define (pi-sum n)
+  (cons-stream
+   (/ 1.0 n)
+   (stream-map -
+	       (pi-sum (+ 2 n)))))
+
+(define pi
+  (scale-stream 4 (partial-sum (pi-sum 1))))
+
+
+  
+(define (make-table trans s)
+  (cons-stream s
+	       (make-table trans (trans s))))
+
+(define pi-super
+  (stream-map
+   stream-car
+   (make-table transform pi)))
+
+
+(define (stream-ref-n s n)
+  (if (= n 0)
+      (display (stream-car s))
+      (begin
+	(newline)
+	(display (stream-car s))
+	(newline)
+	(stream-ref-n (stream-cdr s) (- n 1)))))
+
+
+(define (alt n)
+  (cons-stream
+   (/ 1.0 n)
+   (stream-map -
+	     (alt (+ n 1)))))
+
+(define ln2
+  (partial-sum (alt 1)))
+
+(define ln2-super
+  (stream-map
+   stream-car
+   (make-table transform ln2)))
+
+
+;;;
+
+(define (stream-limit s tolerance)
+  (let ((m0 (stream-ref s 0))
+	(m1 (stream-ref s 1)))
+    (if (<  (abs (- m0 m1)) tolerance)
+	m1
+	(stream-limit (stream-cdr s) tolerance))))
+
+
+(define (interleave s t)
+  (if (stream-null? s)
+      t
+      (cons-stream
+       (stream-car s)
+       (interleave t (stream-cdr s)))))
+
+
+
+(define (pairs s t)
+  (cons-stream
+   (list (stream-car s) (stream-car t))
+   (interleave (stream-map (lambda(x) (list (stream-car s) x))
+		      (stream-cdr t))
+	  (pairs (stream-cdr s) (stream-cdr t)))))
+
+;;;;  wrong one
+
+
+(define (ps s t)
+  (interleave
+   (stream-map (lambda(x) (list (stream-car s) x))
+	       t)
+   (ps (stream-cdr s) (stream-cdr t))))
+
+;; ?? why inifinite loop
+
+(define (merge-weighted s1 s2 weight)
+  (let ((w1 (weight (stream-car s1)))
+	(w2 (weight (stream-car s2))))
+    (cond ((< w1 w2)
+	   (cons-stream
+	    (stream-car s1)
+	    (merge-weighted (stream-cdr s1) s2 weight)))
+	  ((> w1 w2)
+	   (cons-stream
+	    (stream-car s2)
+	    (merge-weighted s1 (stream-cdr s2) weight)))
+	  (else
+	   (cons-stream
+	    (stream-car s1)
+	    (merge-weighted (stream-cdr s1) (stream-cdr s2) weight))))))
+
+(define (weight term)
+  (+ (* 2 (car term))  (* 3 (cadr term)) (* 5 (car term) (cadr term))))
+
+
+
+(define (pairs-weight s t weight)
+  (cons-stream
+   (list (stream-car s) (stream-car t))
+   (merge-weighted (stream-map (lambda(x) (list (stream-car s) x))
+		      (stream-cdr t))
+		   (pairs-weight (stream-cdr s) (stream-cdr t) weight)
+		   weight
+		   )))
+
+
+;;; ram numbers
+
+(define (ram-weight term)
+  (+  (* (car term) (car term) (car term))
+      (* (cadr term)  (cadr term)  (cadr term))))
+
+
+
+
+
+(define (ram-pairs s t)
+  (cons-stream
+   (list (stream-car s) (stream-car t))
+   (merge-weighted (stream-map (lambda(x) (list (stream-car s) x))
+			       (stream-cdr t))
+		   (ram-pairs (stream-cdr s) (stream-cdr t))
+		   ram-weight)))
+
+(define ram (ram-pairs xint xint))
+
+(define (r lt)
+  (let ((r1 (stream-ref lt 0))
+	(r2 (stream-ref lt 1)))
+    (if (= (ram-weight r1) (ram-weight r2))
+	(cons-stream
+	 r1
+	 (r (stream-cdr lt)))
+	(r (stream-cdr lt)))))
+
+
+(define dt 0.001)
+
+
+(define (integral intg init dt)
+  (define int 
+   (cons-stream
+   init
+   (stream-add (scale-stream dt intg)
+	       int)))
+  int)
+
+(define (volt  c r  dt)
+  (lambda(i v0)
+    (stream-add
+     (scale-stream r i)
+     (scale-stream (/ 1.0 c)
+		   (integral i v0 dt)))))
+
+
+
+
+(define (integ-delay  dint init dt)
+  (define int
+   (cons-stream init
+	       (stream-add  (scale-stream dt (force dint))
+			    int)))
+  int)
+
+
+(define (solve f y0 dt)
+  (define y (integ-delay (delay dy) y0 dt))
+  (define dy (stream-map f y))
+  y)
+
+
+(define (solve-2nd dy0 y0 dt)
+  (lambda(a b)
+  (define y (integ-delay (delay dy) y0 dt))
+  (define dy (integ-delay (delay ddy) dy0 dt))
+  (define ddy (stream-add (scale-stream a dy)
+			  (scale-stream b y)))
+  y))
+
+
+(define (solve-nd f dy0 y0 dt)
+  (define y (integ-dealy (delay dy) y0 dt))
+  (define dy (integ-delay (delay ddy) dy0 dt))
+  (define ddy (stream-map f
+			  dy
+			  y))
+  y)
+
+
+
+(define x
+  (stream-map (lambda(x y) (+ x y))
+	      xint
+	      xint))
+
+
+(define (neg x)
+  (- 0 x))
+
+
+(define (rlc r l c dt)
+
+  (lambda(vc0 il0)
+    (define il (integ-delay (delay dil) il0 dt))
+    (define vc (integ-delay (delay dvc) vc0 dt))
+    (define dil (stream-add
+		 (scale-stream (/ 1.0 l) vc)
+		 (scale-stream (neg (/ r l)) il)))
+    (define dvc (scale-stream (neg (/ 1.0 c)) il))
+    (stream-map cons il vc)))
+
+
+  
+     
+(define trls (rlc 1 1 0.2 0.001))
+(define ww (trls 10 0))
